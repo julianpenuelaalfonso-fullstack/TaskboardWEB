@@ -7,6 +7,8 @@ import { setClientIpHeader } from "./middleware/clientIp.js";
 import { env } from "./env.js";
 import { NotFoundError } from "./errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { requireSession } from "./middleware/requireSession.js";
+import { workspacesRouter } from "./workspaces/routes.js";
 
 export function createApp(): express.Express {
   const app = express();
@@ -34,6 +36,7 @@ export function createApp(): express.Express {
   app.all("/api/auth/*splat", toNodeHandler(auth));
   app.use(express.json());
   // 2. Aquí: routers autenticados.
+  app.use("/api/workspaces", requireSession, workspacesRouter);
   // 3. Al final: 404 de /api y errorHandler.
   app.use("/api", () => {
     throw new NotFoundError();
