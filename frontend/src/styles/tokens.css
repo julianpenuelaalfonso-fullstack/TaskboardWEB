@@ -1,0 +1,57 @@
+:root {
+  --paper: #f5f6f8;
+  --text: #14172b;
+  --muted: #5e6378;
+  --rule: #d9dce5;
+  --ink: #2433c4;
+  --ink-hover: #1a2696;
+  --on-ink: #ffffff;
+  --marker: #ffe24d;
+  --done-text: #4a4f63;
+  --danger: #c42b2b;
+  --danger-bg: #fdeeee;
+
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+
+  color-scheme: light;
+  font-family: var(--body);
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--paper);
+}
+
+/* Sin atributo sigue al sistema; data-theme fuerza claro u oscuro. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11142a;
+    --text: #e8eaf4;
+    --muted: #9aa0bd;
+    --rule: #2b3052;
+    --ink: #8b97ff;
+    --ink-hover: #a9b2ff;
+    --on-ink: #11142a;
+    --marker: rgba(255, 226, 77, 0.32);
+    --done-text: #d4d7e6;
+    --danger: #ff8a8a;
+    --danger-bg: #2a1820;
+    color-scheme: dark;
+    --overlay: rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #11142a;
+  --text: #e8eaf4;
+  --muted: #9aa0bd;
+  --rule: #2b3052;
+  --ink: #8b97ff;
+  --ink-hover: #a9b2ff;
+  --on-ink: #11142a;
+  --marker: rgba(255, 226, 77, 0.32);
+  --done-text: #d4d7e6;
+  --danger: #ff8a8a;
+  --danger-bg: #2a1820;
+  color-scheme: dark;
+  --overlay: rgba(0, 0, 0, 0.6);
+}
