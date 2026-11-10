@@ -7,7 +7,7 @@ export const ROLES = ["owner", "admin", "editor", "viewer"] as const;
 const inList = (col: string, values: readonly string[]) =>
   sql.raw(`${col} in (${values.map((v) => `'${v}'`).join(", ")})`);
 
-// Better Auth (esquema core, adaptador Drizzle pg). Task 3 lo reconcilia con el CLI.
+// Better Auth (esquema core, adaptador Drizzle pg). Reconciliado con @better-auth/cli (Task 3): mismas columnas; se añaden sus índices y timestamptz.
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -27,7 +27,7 @@ export const session = pgTable("session", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-});
+}, (t) => [index("session_user_id_idx").on(t.userId)]);
 
 export const account = pgTable("account", {
   id: text("id").primaryKey(),
@@ -43,7 +43,7 @@ export const account = pgTable("account", {
   password: text("password"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index("account_user_id_idx").on(t.userId)]);
 
 export const verification = pgTable("verification", {
   id: text("id").primaryKey(),
@@ -52,7 +52,7 @@ export const verification = pgTable("verification", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index("verification_identifier_idx").on(t.identifier)]);
 
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
