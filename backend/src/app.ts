@@ -1,0 +1,36 @@
+import express from "express";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
+import { NotFoundError } from "./errors.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+
+export function createApp(): express.Express {
+  const app = express();
+  app.use(helmet());
+  app.use(
+    "/api",
+    rateLimit({
+      windowMs: 60_000,
+      limit: 300,
+      handler: (_req, res) => {
+        res.status(429).json({ error: { code: "rate_limited", message: "Demasiadas peticiones" } });
+      },
+    }),
+  );
+
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // Orden obligatorio para las siguientes tareas:
+  // 1. Aquí, ANTES de express.json(): handler de Better Auth (app.all("/api/auth/*splat", ...)).
+  app.use(express.json());
+  // 2. Aquí: routers autenticados.
+  // 3. Al final: 404 de /api y errorHandler.
+  app.use("/api", () => {
+    throw new NotFoundError();
+  });
+  app.use(errorHandler);
+
+  return app;
+}
