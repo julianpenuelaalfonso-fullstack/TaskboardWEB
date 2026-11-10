@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    fileParallelism: false, // todos los archivos comparten taskboard_test y resetDb hace TRUNCATE
     globalSetup: ["test/global-setup.ts"],
     setupFiles: ["test/setup.ts"],
     include: ["test/**/*.test.ts"],
