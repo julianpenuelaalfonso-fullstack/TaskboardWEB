@@ -14,11 +14,34 @@ async function request(path, options = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+function TaskRow({ task, busy, onToggle, onDelete }) {
+  return (
+    <li className={task.done ? "task is-done" : "task"}>
+      <label className="task-check">
+        <input type="checkbox" checked={task.done} disabled={busy} onChange={onToggle} />
+        <span className="task-title">{task.title}</span>
+      </label>
+      <button className="task-delete" disabled={busy} onClick={onDelete} aria-label={`Eliminar "${task.title}"`}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+    </li>
+  );
+}
+
+function summary(pending, done) {
+  if (pending === 0 && done === 0) return "Tu tablero está vacío.";
+  if (pending === 0) return "Todo al día. No te queda nada pendiente.";
+  return pending === 1 ? "Te queda 1 tarea pendiente." : `Te quedan ${pending} tareas pendientes.`;
+}
+
 export default function App() {
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [fieldError, setFieldError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -27,7 +50,7 @@ export default function App() {
     try {
       setTasks(await request("/api/tasks"));
     } catch {
-      setError("No se pudo conectar con la API. Si es la primera visita, el servidor puede tardar hasta un minuto en despertar.");
+      setError("No hay conexión con el servidor. Revisa que la API esté encendida y vuelve a intentarlo.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +75,8 @@ export default function App() {
   const addTask = (e) => {
     e.preventDefault();
     const clean = title.trim();
-    if (!clean) return setError("Escribe un título para la tarea.");
+    if (!clean) return setFieldError("Escribe qué hay que hacer antes de agregarla.");
+    setFieldError("");
     run(async () => {
       await request("/api/tasks", { method: "POST", body: JSON.stringify({ title: clean }) });
       setTitle("");
@@ -64,50 +88,66 @@ export default function App() {
 
   const deleteTask = (t) => run(() => request(`/api/tasks/${t.id}`, { method: "DELETE" }));
 
-  const pending = tasks.filter((t) => !t.done).length;
+  const pending = tasks.filter((t) => !t.done);
+  const done = tasks.filter((t) => t.done);
+  const firstLoad = loading && tasks.length === 0;
+
+  const row = (t) => (
+    <TaskRow key={t.id} task={t} busy={busy} onToggle={() => toggleTask(t)} onDelete={() => deleteTask(t)} />
+  );
 
   return (
     <main>
-      <h1>TaskBoard</h1>
+      <header className="masthead">
+        <h1>TaskBoard</h1>
+        {!firstLoad && !error && <p className="summary">{summary(pending.length, done.length)}</p>}
+      </header>
 
-      <form onSubmit={addTask}>
+      <form className="composer" onSubmit={addTask} noValidate>
         <label htmlFor="title" className="sr-only">Nueva tarea</label>
         <input
           id="title"
           value={title}
           maxLength={200}
+          autoComplete="off"
           placeholder="¿Qué hay que hacer?"
-          onChange={(e) => setTitle(e.target.value)}
+          aria-invalid={Boolean(fieldError)}
+          aria-describedby={fieldError ? "title-error" : undefined}
+          onChange={(e) => { setTitle(e.target.value); if (fieldError) setFieldError(""); }}
         />
-        <button disabled={busy}>Agregar</button>
+        <button disabled={busy}>Agregar tarea</button>
       </form>
+      {fieldError && <p id="title-error" className="field-error">{fieldError}</p>}
 
       {error && (
-        <p className="error" role="alert">
-          {error} <button className="link" onClick={load}>Reintentar</button>
-        </p>
+        <div className="alert" role="alert">
+          <p>{error}</p>
+          <button className="alert-retry" onClick={load} disabled={loading}>Reintentar</button>
+        </div>
       )}
 
-      {loading && tasks.length === 0 ? (
-        <p className="status" role="status">Cargando tareas…</p>
+      {firstLoad ? (
+        <div className="loading" role="status">
+          <div className="loading-bar" aria-hidden="true" />
+          <p>Conectando con el servidor…</p>
+          <p className="muted">Si estaba en reposo, puede tardar hasta un minuto en responder.</p>
+        </div>
       ) : tasks.length === 0 ? (
-        !error && <p className="status">No hay tareas todavía.</p>
+        !error && <p className="empty">Escribe tu primera tarea arriba y pulsa Agregar tarea.</p>
       ) : (
         <>
-          <p className="status">{pending} pendiente(s) de {tasks.length}</p>
-          <ul>
-            {tasks.map((t) => (
-              <li key={t.id} className={t.done ? "done" : ""}>
-                <label>
-                  <input type="checkbox" checked={t.done} disabled={busy} onChange={() => toggleTask(t)} />
-                  <span>{t.title}</span>
-                </label>
-                <button className="delete" disabled={busy} onClick={() => deleteTask(t)} aria-label={`Eliminar ${t.title}`}>
-                  Eliminar
-                </button>
-              </li>
-            ))}
-          </ul>
+          <section aria-labelledby="pending-heading">
+            <h2 id="pending-heading">Pendientes <span className="count">{pending.length}</span></h2>
+            {pending.length > 0
+              ? <ul>{pending.map(row)}</ul>
+              : <p className="muted">Nada pendiente.</p>}
+          </section>
+          {done.length > 0 && (
+            <section aria-labelledby="done-heading">
+              <h2 id="done-heading">Hechas <span className="count">{done.length}</span></h2>
+              <ul>{done.map(row)}</ul>
+            </section>
+          )}
         </>
       )}
     </main>
