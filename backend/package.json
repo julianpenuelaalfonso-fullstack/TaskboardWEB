@@ -11,13 +11,15 @@
     "start:prod": "npm run migrate && npm start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "migrate": "tsx src/db/migrate.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "dotenv": "^18.0.10",
+    "drizzle-orm": "^0.45.4",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.4",
     "helmet": "^8.3.0",
@@ -30,6 +32,7 @@
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^10.14.0",
     "supertest": "^7.3.2",
     "tsx": "^4.23.15",
