@@ -16,6 +16,7 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: optional,
   RESEND_API_KEY: optional,
   EMAIL_FROM: z.string().min(1).default("TaskBoard <no-reply@taskboard.local>"),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   PORT: z.coerce.number().int().positive().default(3002),
 });
 

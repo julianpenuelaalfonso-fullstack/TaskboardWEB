@@ -1,11 +1,14 @@
 import express from "express";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
+import { env } from "./env.js";
 import { NotFoundError } from "./errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 export function createApp(): express.Express {
   const app = express();
+  // Número exacto de proxies delante de la API (nunca `true`: permitiría falsificar X-Forwarded-For).
+  app.set("trust proxy", env.TRUST_PROXY_HOPS);
   app.use(helmet());
   app.use(
     "/api",

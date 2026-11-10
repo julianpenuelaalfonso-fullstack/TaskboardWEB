@@ -18,6 +18,9 @@ test("JSON mal formado responde 400 validation", async () => {
   expect(res.status).toBe(400);
   expect(res.body.error.code).toBe("validation");
 });
+test("confía en el número de proxies configurado", () => {
+  expect(createApp().get("trust proxy")).toBe(1);
+});
 test("incluye cabeceras de helmet", async () => {
   const res = await request(createApp()).get("/api/health");
   expect(res.headers["x-content-type-options"]).toBe("nosniff");
