@@ -9,6 +9,7 @@ import { NotFoundError } from "./errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireSession } from "./middleware/requireSession.js";
 import { boardsRouter, workspaceBoardsRouter } from "./boards/routes.js";
+import { boardTasksRouter, tasksRouter } from "./tasks/routes.js";
 import { workspacesRouter } from "./workspaces/routes.js";
 
 export function createApp(): express.Express {
@@ -40,6 +41,8 @@ export function createApp(): express.Express {
   app.use("/api/workspaces", requireSession, workspacesRouter);
   app.use("/api/workspaces", requireSession, workspaceBoardsRouter);
   app.use("/api/boards", requireSession, boardsRouter);
+  app.use("/api/boards", requireSession, boardTasksRouter);
+  app.use("/api/tasks", requireSession, tasksRouter);
   // 3. Al final: 404 de /api y errorHandler.
   app.use("/api", () => {
     throw new NotFoundError();
