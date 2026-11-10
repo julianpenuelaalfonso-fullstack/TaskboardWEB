@@ -74,8 +74,11 @@ describe("boards", () => {
     expect((await b.agent.delete(`/api/boards/${a.boardId}`)).status).toBe(404);
     expect((await b.agent.get(`/api/workspaces/${a.workspaceId}/boards`)).status).toBe(404);
     expect((await b.agent.post(`/api/workspaces/${a.workspaceId}/boards`).send({ name: "x" })).status).toBe(404);
-    expect((await b.agent.get("/api/boards/archived")).body).toEqual([]);
-    expect((await a.agent.get(`/api/boards/${a.boardId}`)).status).toBe(200);
+    expect((await a.agent.get(`/api/boards/${a.boardId}`)).body.name).toBe("Tablero de prueba");
+    await a.agent.patch(`/api/boards/${a.boardId}`).send({ archived: true });
+    const mine = (await a.agent.get("/api/boards/archived")).body;
+    expect(mine.find((x: B) => x.id === a.boardId).workspaceName).toBe("Personal");
+    expect(ids((await b.agent.get("/api/boards/archived")).body)).not.toContain(a.boardId);
   });
 
   test("DELETE responde 204 y después 404", async () => {
