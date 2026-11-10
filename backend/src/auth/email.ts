@@ -17,7 +17,9 @@ export async function sendEmail({ to, subject, text }: Email): Promise<void> {
     sentEmails.push({ to, subject, text });
     return;
   }
+  // Nunca registrar el cuerpo en producción: contiene el token de restablecimiento.
   if (!resend) {
+    if (env.NODE_ENV === "production") throw new Error("RESEND_API_KEY no configurada");
     console.log(`[email] to=${to} subject=${subject}\n${text}`);
     return;
   }

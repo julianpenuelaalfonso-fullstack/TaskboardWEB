@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/client.js";
 import * as schema from "../db/schema.js";
+import { CLIENT_IP_HEADER } from "../middleware/clientIp.js";
 import { env } from "../env.js";
 import { sendEmail } from "./email.js";
 import { ensurePersonalWorkspace } from "./personalWorkspace.js";
@@ -32,9 +33,23 @@ export const auth = betterAuth({
     },
   },
   socialProviders: google,
-  account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
+  // Sin trustedProviders: en 1.7.20 eso vincula aunque el correo de Google no esté verificado.
+  account: { accountLinking: { enabled: true } },
+  advanced: { ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] } },
   rateLimit: { enabled: env.NODE_ENV !== "test" },
   databaseHooks: {
-    user: { create: { after: async (user) => void (await ensurePersonalWorkspace(user.id)) } },
+    user: {
+      create: {
+        after: async (user) => {
+          // Si falla y se relanza, el registro responde 5xx con el usuario ya creado. El respaldo
+          // de GET /api/workspaces crea el workspace después.
+          try {
+            await ensurePersonalWorkspace(user.id);
+          } catch (err) {
+            console.error("[auth] no se pudo crear el workspace personal", err);
+          }
+        },
+      },
+    },
   },
 });
