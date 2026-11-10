@@ -3,7 +3,7 @@ import { requireWorkspaceMember } from "../access.js";
 import { ensurePersonalWorkspace } from "../auth/personalWorkspace.js";
 import { db } from "../db/client.js";
 import { workspaceMembers, workspaces } from "../db/schema.js";
-import { ConflictError } from "../errors.js";
+import { ConflictError, NotFoundError } from "../errors.js";
 
 export async function listWorkspaces(userId: string) {
   await ensurePersonalWorkspace(userId); // red de seguridad si falló el hook de registro
@@ -26,6 +26,7 @@ export async function createWorkspace(userId: string, name: string) {
 export async function renameWorkspace(userId: string, id: string, name: string) {
   const { role } = await requireWorkspaceMember(userId, id);
   const [ws] = await db.update(workspaces).set({ name }).where(eq(workspaces.id, id)).returning();
+  if (!ws) throw new NotFoundError(); // borrado entre el chequeo y la escritura
   return { id: ws.id, name: ws.name, isPersonal: ws.isPersonal, role };
 }
 

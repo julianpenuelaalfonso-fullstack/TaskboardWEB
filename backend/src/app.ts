@@ -8,6 +8,7 @@ import { env } from "./env.js";
 import { NotFoundError } from "./errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireSession } from "./middleware/requireSession.js";
+import { boardsRouter, workspaceBoardsRouter } from "./boards/routes.js";
 import { workspacesRouter } from "./workspaces/routes.js";
 
 export function createApp(): express.Express {
@@ -37,6 +38,8 @@ export function createApp(): express.Express {
   app.use(express.json());
   // 2. Aquí: routers autenticados.
   app.use("/api/workspaces", requireSession, workspacesRouter);
+  app.use("/api/workspaces", requireSession, workspaceBoardsRouter);
+  app.use("/api/boards", requireSession, boardsRouter);
   // 3. Al final: 404 de /api y errorHandler.
   app.use("/api", () => {
     throw new NotFoundError();

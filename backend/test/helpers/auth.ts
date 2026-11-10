@@ -18,6 +18,14 @@ export async function signUp(email = `${crypto.randomUUID()}@test.dev`): Promise
   return { agent, userId: res.body.user.id as string };
 }
 
+export async function signUpWithBoard(): Promise<{ agent: TestAgent; userId: string; workspaceId: string; boardId: string }> {
+  const { agent, userId } = await signUp();
+  const [ws] = (await agent.get("/api/workspaces")).body;
+  const res = await agent.post(`/api/workspaces/${ws.id}/boards`).send({ name: "Tablero de prueba" });
+  if (res.status !== 201) throw new Error(`signUpWithBoard falló: ${res.status} ${res.text}`);
+  return { agent, userId, workspaceId: ws.id as string, boardId: res.body.id as string };
+}
+
 export function membershipsOf(userId: string) {
   return db
     .select({ role: workspaceMembers.role, isPersonal: workspaces.isPersonal, name: workspaces.name })

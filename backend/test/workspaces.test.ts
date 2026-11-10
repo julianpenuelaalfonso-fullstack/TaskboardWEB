@@ -81,6 +81,14 @@ describe("workspaces", () => {
     expect((await db.select().from(workspaces)).some((w) => w.id === ws.id)).toBe(false);
   });
 
-  // Se activa en la Tarea 5, cuando existan las rutas de tableros.
-  test.todo("borrar un workspace con tableros no deja huérfanos (vía rutas /boards)");
+  test("borrar un workspace con tableros creados por rutas no deja huérfanos", async () => {
+    const { agent } = await signUp();
+    const ws = (await agent.post("/api/workspaces").send({ name: "Temporal" })).body;
+    const board = (await agent.post(`/api/workspaces/${ws.id}/boards`).send({ name: "T" })).body;
+    await db.insert(tasks).values({ boardId: board.id, title: "t" });
+    expect((await agent.delete(`/api/workspaces/${ws.id}`)).status).toBe(204);
+    expect((await agent.get(`/api/boards/${board.id}`)).status).toBe(404);
+    expect(await db.select().from(boards)).toHaveLength(0);
+    expect(await db.select().from(tasks)).toHaveLength(0);
+  });
 });
