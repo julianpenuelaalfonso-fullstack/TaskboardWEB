@@ -10,7 +10,7 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start:prod # migra y arranca (el plan gratuito no tiene pre-deploy command)
     healthCheckPath: /api/health
     envVars:
@@ -35,13 +35,13 @@ services:
       - key: EMAIL_FROM
         sync: false
       - key: TRUST_PROXY_HOPS
-        sync: false # empezar con 1 y verificar tras el primer despliegue (ver README)
+        value: "1" # verificar tras el primer despliegue (ver README); vacío equivaldría a 0
 
   - type: web
     name: taskboard-web
     runtime: static
     rootDir: frontend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     staticPublishPath: dist
     routes:
       # Si la API no se llama taskboard-api, su subdominio será otro: ajustar el destino.

@@ -92,19 +92,19 @@ Los `.env` no se suben al repositorio; usar `backend/.env.example` como plantill
 
 ## Despliegue en Render
 
-**Opción A, Blueprint**: **New -> Blueprint**, elegir el repositorio. Render lee `render.yaml`, crea base, API y Static Site, y pide los valores `sync: false`: `APP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `TRUST_PROXY_HOPS`. `APP_URL` es la URL del Static Site, que aún no existe: poner un valor provisional y corregirlo después.
+**Opción A, Blueprint**: **New -> Blueprint**, elegir el repositorio. Render lee `render.yaml`, crea base, API y Static Site, y pide los valores `sync: false`: `APP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM` (`TRUST_PROXY_HOPS` viene fijado en `1`). Esos valores solo se piden en la primera creación del Blueprint; después se editan en el panel de cada servicio. `APP_URL` es la URL del Static Site, que aún no existe: poner un valor provisional y, antes de probar el primer inicio de sesión, cambiarla por la URL real (el callback de Google y la URL base de Better Auth dependen de ella).
 
 **Opción B, manual**
 1. **New -> Postgres** `taskboard-db`, plan Free; copiar la Internal Database URL.
-2. **New -> Web Service**: Root Directory `backend`, Build `npm ci && npm run build`, Start `npm run start:prod`, Health Check Path `/api/health`, plan Free. Variables: todas las de la tabla (columna Producción), con `NODE_ENV=production` y `DB_SSL=false`.
-3. **New -> Static Site**: Root Directory `frontend`, Build `npm ci && npm run build`, Publish Directory `dist`. En **Redirects/Rewrites**, en este orden: `/api/*` -> `https://<api>.onrender.com/api/*` (Rewrite) y `/*` -> `/index.html` (Rewrite).
+2. **New -> Web Service**: Root Directory `backend`, Build `npm ci --include=dev && npm run build`, Start `npm run start:prod`, Health Check Path `/api/health`, plan Free. Variables: todas las de la tabla (columna Producción), con `NODE_ENV=production` y `DB_SSL=false`.
+3. **New -> Static Site**: Root Directory `frontend`, Build `npm ci --include=dev && npm run build`, Publish Directory `dist`. En **Redirects/Rewrites**, en este orden: `/api/*` -> `https://<api>.onrender.com/api/*` (Rewrite) y `/*` -> `/index.html` (Rewrite).
 4. Poner la URL del Static Site en `APP_URL` de la API y en la URI de redirección de Google.
 
 Notas:
-- `start:prod` ejecuta `npm run migrate` y luego arranca (el plan gratuito no tiene pre-deploy command).
+- `start:prod` ejecuta las migraciones (`node dist/db/migrate.js`) y luego arranca (el plan gratuito no tiene pre-deploy command). Con `NODE_ENV=production`, `npm ci` omite las devDependencies, por eso el build usa `--include=dev` (necesita `tsc`); en runtime no se usa `tsx`.
 - El subdominio de la API puede no ser `taskboard-api` (si el nombre está tomado, Render añade un sufijo): hay que actualizar el destino del rewrite en `render.yaml` con la URL real.
 - El rewrite añade latencia. Que las cookies de sesión funcionen a través de él es lo primero que hay que verificar tras desplegar: iniciar sesión, recargar y comprobar que la sesión persiste.
-- `TRUST_PROXY_HOPS` alimenta `req.ip`, el rate limit de Express y el de Better Auth. Empezar con `1`; si los logs muestran todas las peticiones con la misma IP, o el límite afecta a todos los usuarios a la vez, ajustar el valor.
+- `TRUST_PROXY_HOPS` alimenta `req.ip`, el rate limit de Express y el de Better Auth. Viene fijado en `1` y hay que verificarlo tras el primer despliegue; si los logs muestran todas las peticiones con la misma IP, o el límite afecta a todos los usuarios a la vez, ajustar el valor.
 - Verificación: `https://<static>/api/health` debe responder `{"status":"ok"}`.
 - El plan gratuito suspende la API tras un rato sin uso; la primera petición puede tardar cerca de un minuto.
 
