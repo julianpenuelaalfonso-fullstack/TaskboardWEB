@@ -12,5 +12,6 @@ export const authRoutes: RouteObject[] = [
   pub("/login", <LoginPage />),
   pub("/registro", <RegisterPage />),
   pub("/recuperar", <ForgotPage />),
-  pub("/restablecer", <ResetPage />)
+  // Sin PublicOnly: quien ya tiene sesión y abre un enlace de restablecimiento no debe perder el token.
+  { path: "/restablecer", element: <ResetPage /> }
 ];

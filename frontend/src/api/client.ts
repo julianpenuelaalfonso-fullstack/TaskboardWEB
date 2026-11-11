@@ -12,8 +12,8 @@ export class ApiError extends Error {
   }
 }
 
-let onUnauthorized: (path: string) => void = () => {};
-export const setUnauthorizedHandler = (fn: (path: string) => void) => { onUnauthorized = fn; };
+let onUnauthorized: (path: string) => unknown = () => {};
+export const setUnauthorizedHandler = (fn: (path: string) => unknown) => { onUnauthorized = fn; };
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;

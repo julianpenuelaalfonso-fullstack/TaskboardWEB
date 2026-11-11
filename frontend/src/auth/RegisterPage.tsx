@@ -27,7 +27,7 @@ export function RegisterPage() {
         <button className="primary" type="submit" disabled={form.busy}>Crear cuenta</button>
       </form>
       <button className="google" type="button"
-        onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/app", errorCallbackURL: "/registro" })}>
+        onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/app", errorCallbackURL: "/login" })}>
         Continuar con Google
       </button>
       <div className="auth-links"><Link to="/login">Ya tengo cuenta</Link></div>

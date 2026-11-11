@@ -4,7 +4,9 @@ import { AuthLayout } from "./AuthLayout";
 import { authClient } from "./authClient";
 import { safeNext } from "./redirect";
 import { GENERIC_ERROR, useAccountForm } from "./useAccountForm";
-import { validateEmail, validatePassword } from "./validation";
+import { validateEmail } from "./validation";
+
+const validateRequired = (v: string) => (v ? null : "Escribe tu contraseña.");
 
 const oauthError = (code: string) =>
   code === "account_not_linked"
@@ -16,7 +18,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const next = safeNext(params.get("next"));
   const urlError = params.get("error");
-  const form = useAccountForm({ email: validateEmail, password: validatePassword }, async ({ email, password }) => {
+  const form = useAccountForm({ email: validateEmail, password: validateRequired }, async ({ email, password }) => {
     const { error } = await authClient.signIn.email({ email, password });
     if (!error) { navigate(next, { replace: true }); return null; }
     return error.status === 401 || error.status === 400 || error.code === "INVALID_EMAIL_OR_PASSWORD"
