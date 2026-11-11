@@ -39,27 +39,34 @@ export function TaskList({ boardId }: { boardId: string }) {
   const [fieldError, setFieldError] = useState("");
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const timers = useRef(new Map<string, number>()); // id → temporizador del DELETE diferido
+  const toasts = useRef(new Map<string, number>()); // id → toast con Deshacer
+  const dismissToast = (id: string) => {
+    const t = toasts.current.get(id);
+    if (t !== undefined) toast.dismiss(t);
+    toasts.current.delete(id);
+  };
 
   const unhide = (id: string) => setHidden((h) => { const n = new Set(h); n.delete(id); return n; });
 
   const sendDelete = (id: string) => {
     timers.current.delete(id);
-    del.mutate({ id, boardId }, {
-      onError: () => {
-        unhide(id);
-        toast.show("No se pudo eliminar la tarea. Inténtalo de nuevo.");
-      }
+    dismissToast(id);
+    // mutateAsync: los callbacks por llamada de mutate() se pierden si hay otro borrado en curso.
+    del.mutateAsync({ id, boardId }).catch(() => {
+      unhide(id);
+      toast.show("No se pudo eliminar la tarea. Inténtalo de nuevo.");
     });
   };
 
   // Los borrados pendientes no se pierden: se envían al cerrar la pestaña (keepalive) o al salir del tablero.
-  const latest = useRef(sendDelete);
-  latest.current = sendDelete;
+  const latest = useRef({ sendDelete, dismissToast });
+  latest.current = { sendDelete, dismissToast };
   useEffect(() => {
     const map = timers.current;
     const onPageHide = () => {
       for (const [id, t] of map) {
         clearTimeout(t);
+        latest.current.dismissToast(id);
         void fetch(`/api/tasks/${id}`, { method: "DELETE", credentials: "same-origin", keepalive: true });
       }
       map.clear();
@@ -67,15 +74,15 @@ export function TaskList({ boardId }: { boardId: string }) {
     window.addEventListener("pagehide", onPageHide);
     return () => {
       window.removeEventListener("pagehide", onPageHide);
-      for (const [id, t] of [...map]) { clearTimeout(t); latest.current(id); }
+      for (const [id, t] of [...map]) { clearTimeout(t); latest.current.sendDelete(id); }
     };
   }, []);
 
   const removeTask = (t: Task) => {
     setHidden((h) => new Set(h).add(t.id));
     document.getElementById("title")?.focus(); // la fila desaparece: evita perder el foco
-    timers.current.set(t.id, window.setTimeout(() => latest.current(t.id), UNDO_MS));
-    toast.show("Tarea eliminada", {
+    timers.current.set(t.id, window.setTimeout(() => latest.current.sendDelete(t.id), UNDO_MS));
+    const toastId = toast.show("Tarea eliminada", {
       actionLabel: "Deshacer",
       durationMs: UNDO_MS,
       onAction: () => {
@@ -86,6 +93,7 @@ export function TaskList({ boardId }: { boardId: string }) {
         unhide(t.id);
       }
     });
+    toasts.current.set(t.id, toastId);
   };
 
   const addTask = (e: FormEvent) => {

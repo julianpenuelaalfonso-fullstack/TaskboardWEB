@@ -15,12 +15,14 @@ type Props = {
 function ConfirmForm({ name, description, onClose, onConfirm }: Required<Pick<Props, "name" | "description" | "onClose" | "onConfirm">>) {
   const [typed, setTyped] = useState("");
   const busy = useRef(false);
+  const [running, setRunning] = useState(false);
   const matches = typed === name;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!matches || busy.current) return;
     busy.current = true;
-    try { await onConfirm(); } finally { busy.current = false; }
+    setRunning(true);
+    try { await onConfirm(); } finally { busy.current = false; setRunning(false); }
   };
   return (
     <form noValidate onSubmit={(e) => void submit(e)} className="name-form">
@@ -30,7 +32,7 @@ function ConfirmForm({ name, description, onClose, onConfirm }: Required<Pick<Pr
       </Field>
       <div className="dialog-actions">
         <button type="button" className="secondary" onClick={onClose}>Cancelar</button>
-        <button type="submit" className="danger" disabled={!matches}>Eliminar</button>
+        <button type="submit" className="danger" disabled={!matches || running}>{running ? "Eliminando…" : "Eliminar"}</button>
       </div>
     </form>
   );

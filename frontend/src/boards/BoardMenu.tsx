@@ -28,7 +28,8 @@ export function BoardMenu({ board, onRename }: { board: BoardWithWorkspace; onRe
     }
     toast.show("Tablero archivado", {
       actionLabel: "Deshacer",
-      onAction: () => update.mutate({ id: board.id, archived: false })
+      onAction: () => void update.mutateAsync({ id: board.id, archived: false })
+        .catch(() => toast.show("No se pudo restaurar el tablero. Inténtalo de nuevo."))
     });
     navigate("/app");
   };

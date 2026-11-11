@@ -95,6 +95,53 @@ describe("TaskList: eliminar con deshacer", () => {
   });
 });
 
+describe("TaskList: fallos y avisos", () => {
+  const two = [task, { ...task, id: "t2", title: "Otra" }];
+
+  it("si el primer DELETE falla con otro en curso, esa tarea reaparece con aviso y la otra se elimina", async () => {
+    const f = vi.fn(async (u: string, init?: RequestInit) => {
+      if (init?.method !== "DELETE") return json(200, two);
+      return u.endsWith("/t1") ? json(500, { error: { code: "internal", message: "x" } }) : json(204);
+    });
+    vi.stubGlobal("fetch", f);
+    renderAt("/", <Route path="/" element={<TaskList boardId="b1" />} />);
+    await screen.findByText("Crear la base");
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: 'Eliminar "Crear la base"' }));
+    await act(async () => { vi.advanceTimersByTime(100); });
+    fireEvent.click(screen.getByRole("button", { name: 'Eliminar "Otra"' }));
+    await act(async () => { vi.advanceTimersByTime(5000); });
+    await act(async () => { vi.advanceTimersByTime(100); });
+    expect(deletes(f)).toHaveLength(2);
+    expect(screen.getByText("Crear la base")).toBeInTheDocument();
+    expect(screen.getByText("No se pudo eliminar la tarea. Inténtalo de nuevo.")).toBeInTheDocument();
+  });
+
+  it("al desmontar con un borrado pendiente, su toast desaparece", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_u: string, init?: RequestInit) => (init?.method === "DELETE" ? json(204) : json(200, [task]))));
+    const view = renderAt("/", <Route path="/" element={<TaskList boardId="b1" />} />);
+    await screen.findByText("Crear la base");
+    fireEvent.click(screen.getByRole("button", { name: 'Eliminar "Crear la base"' }));
+    expect(screen.getByText("Tarea eliminada")).toBeInTheDocument();
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}><ToastProvider><MemoryRouter><Routes><Route path="*" element={null} /></Routes></MemoryRouter></ToastProvider></QueryClientProvider>
+    );
+    expect(screen.queryByText("Tarea eliminada")).not.toBeInTheDocument();
+  });
+});
+
+describe("DeleteConfirmDialog pendiente", () => {
+  it("mientras elimina muestra Eliminando… y queda deshabilitado", async () => {
+    let finish = () => {};
+    render(<DeleteConfirmDialog name="X" onConfirm={() => new Promise<void>((r) => { finish = r; })} />);
+    fireEvent.change(screen.getByLabelText(/Escribe/), { target: { value: "X" } });
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    expect(await screen.findByRole("button", { name: "Eliminando…" })).toBeDisabled();
+    await act(async () => finish());
+    expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled();
+  });
+});
+
 describe("BoardPage", () => {
   const routes = (
     <>
@@ -119,6 +166,19 @@ describe("BoardPage", () => {
     await waitFor(() => expect(bodies()).toEqual(['{"archived":true}', '{"archived":false}']));
   });
 
+  it("si Deshacer el archivado falla muestra un error", async () => {
+    let n = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") return ++n === 1 ? json(200, board) : json(500, { error: { code: "internal", message: "x" } });
+      return json(200, url.endsWith("/tasks") ? [] : board);
+    }));
+    renderAt("/app/b/b1", routes);
+    fireEvent.click(await screen.findByRole("button", { name: "Opciones del tablero" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archivar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Deshacer" }));
+    expect(await screen.findByText("No se pudo restaurar el tablero. Inténtalo de nuevo.")).toBeInTheDocument();
+  });
+
   it("un 404 muestra que el tablero no existe y enlaza a /app", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => json(404, { error: { code: "not_found", message: "x" } })));
     renderAt("/app/b/zzz", routes);
@@ -128,6 +188,13 @@ describe("BoardPage", () => {
 });
 
 describe("AppIndex", () => {
+  it("si falla la carga muestra el error con Reintentar, no el estado vacío", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json(500, { error: { code: "internal", message: "Algo falló" } })));
+    renderAt("/app", <Route path="/app" element={<AppIndex />} />);
+    expect(await screen.findByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+    expect(screen.queryByText("Crea tu primer tablero")).not.toBeInTheDocument();
+  });
+
   it("sin tableros muestra Crea tu primer tablero", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) =>
       json(200, url.endsWith("/workspaces") ? [{ id: "w1", name: "Personal", isPersonal: true, role: "owner" }] : [])));

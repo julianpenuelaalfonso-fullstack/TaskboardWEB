@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 type Opts = { actionLabel?: string; onAction?: () => void; durationMs?: number };
 type Item = Opts & { id: number; message: string };
-const Ctx = createContext<{ show: (message: string, opts?: Opts) => void } | null>(null);
+const Ctx = createContext<{ show: (message: string, opts?: Opts) => number; dismiss: (id: number) => void } | null>(null);
 let nextId = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -12,8 +12,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = nextId++;
     setItems((l) => [...l, { ...opts, id, message }]);
     setTimeout(() => dismiss(id), opts.durationMs ?? 5000);
+    return id;
   }, [dismiss]);
-  const value = useMemo(() => ({ show }), [show]);
+  const value = useMemo(() => ({ show, dismiss }), [show, dismiss]);
   return (
     <Ctx.Provider value={value}>
       {children}

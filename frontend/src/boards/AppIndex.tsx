@@ -6,9 +6,19 @@ import { EmptyState } from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
 import { CreateBoardDialog } from "./CreateBoardDialog";
 
+function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="alert" role="alert">
+      <p>{message}</p>
+      <button type="button" className="alert-retry" onClick={onRetry}>Reintentar</button>
+    </div>
+  );
+}
+
 function FirstBoard({ workspaceId }: { workspaceId: string }) {
   const boards = useBoards(workspaceId);
   const [open, setOpen] = useState(false);
+  if (boards.isError) return <LoadError message={boards.error.message} onRetry={() => void boards.refetch()} />;
   if (boards.isPending) return <Skeleton lines={4} />;
   const first = boards.data?.[0];
   if (first) return <Navigate to={`/app/b/${first.id}`} replace />;
@@ -25,5 +35,11 @@ function FirstBoard({ workspaceId }: { workspaceId: string }) {
 export function AppIndex() {
   const workspaces = useWorkspaces();
   const personal = workspaces.data?.find((w) => w.isPersonal);
-  return <main>{personal ? <FirstBoard workspaceId={personal.id} /> : workspaces.isPending ? <Skeleton lines={4} /> : null}</main>;
+  return (
+    <main>
+      {workspaces.isError ? <LoadError message={workspaces.error.message} onRetry={() => void workspaces.refetch()} />
+        : personal ? <FirstBoard workspaceId={personal.id} />
+        : workspaces.isPending ? <Skeleton lines={4} /> : null}
+    </main>
+  );
 }
