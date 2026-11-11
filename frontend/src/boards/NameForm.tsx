@@ -9,14 +9,15 @@ export const validateName = (v: string): string | null => {
   return n > 100 ? "El nombre admite máximo 100 caracteres." : null;
 };
 
-export function NameForm({ submitLabel, pending, error, onSubmit, onCancel }: {
+export function NameForm({ initial = "", submitLabel, pending, error, onSubmit, onCancel }: {
+  initial?: string;
   submitLabel: string;
   pending: boolean;
   error: unknown;
   onSubmit: (name: string) => Promise<unknown>;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initial);
   const [touched, setTouched] = useState(false);
   const apiError = error instanceof ApiError ? (error.fields?.name ?? error.message) : error ? "No se pudo completar la acción. Inténtalo de nuevo." : undefined;
   const shown = (touched ? validateName(name) : null) ?? apiError;
@@ -33,7 +34,7 @@ export function NameForm({ submitLabel, pending, error, onSubmit, onCancel }: {
   return (
     <form noValidate onSubmit={(e) => void submit(e)} className="name-form">
       <Field label="Nombre" error={shown}>
-        <input value={name} autoComplete="off"
+        <input value={name} autoComplete="off" autoFocus
           onChange={(e) => { setName(e.target.value); setTouched(true); }} />
       </Field>
       <div className="dialog-actions">
