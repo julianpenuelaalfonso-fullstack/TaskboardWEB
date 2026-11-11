@@ -1,4 +1,10 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { authRoutes } from "./auth/routes";
+import { RequireAuth } from "./auth/RequireAuth";
 
-// Marcador temporal: las tareas 8-11 sustituyen estas rutas.
-export const router = createBrowserRouter([{ path: "*", element: <main><h1>TaskBoard</h1></main> }]);
+export const router = createBrowserRouter([
+  ...authRoutes,
+  // Marcador temporal: la tarea 10 monta aquí el shell y los tableros.
+  { path: "/app/*", element: <RequireAuth><div>App</div></RequireAuth> },
+  { path: "*", element: <Navigate to="/app" replace /> }
+]);

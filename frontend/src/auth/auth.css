@@ -1,0 +1,21 @@
+.auth { max-width: 26rem; }
+.auth-brand { margin: 0 0 1rem; font: 700 1.125rem var(--display); color: var(--ink); }
+.auth h1 { font-size: clamp(2rem, 8vw, 2.75rem); margin-bottom: 1.5rem; }
+.auth form { display: grid; gap: 1.25rem; }
+.auth .field label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
+.auth .field input {
+  width: 100%; padding: 0.65rem 0.75rem; border: 2px solid var(--rule); border-radius: 0.5rem;
+  background: transparent; color: var(--text); font: 500 1rem var(--body);
+}
+.auth .field input:focus { outline: none; border-color: var(--ink); }
+.auth .field input[aria-invalid="true"] { border-color: var(--danger); }
+.auth .primary, .auth .google {
+  padding: 0.85rem 1.25rem; border-radius: 999px; border: 2px solid var(--ink);
+}
+.auth .primary { background: var(--ink); color: var(--on-ink); }
+.auth .primary:hover:not(:disabled) { background: var(--ink-hover); }
+.auth .google { margin-top: 1rem; width: 100%; background: transparent; color: var(--ink); }
+.auth .alert { margin: 0 0 1.25rem; }
+.auth-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
+.auth-links a, .auth a { color: var(--ink); }
+.auth-note { margin: 0 0 1.25rem; padding: 0.85rem 1rem; border-left: 4px solid var(--ink); background: var(--marker); color: var(--text); }

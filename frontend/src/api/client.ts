@@ -12,8 +12,8 @@ export class ApiError extends Error {
   }
 }
 
-let onUnauthorized: () => void = () => {};
-export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn; };
+let onUnauthorized: (path: string) => void = () => {};
+export const setUnauthorizedHandler = (fn: (path: string) => void) => { onUnauthorized = fn; };
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
@@ -29,7 +29,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const e = body?.error;
-    if (res.status === 401) onUnauthorized();
+    if (res.status === 401) onUnauthorized(path);
     throw new ApiError(res.status, e?.code ?? "internal", e?.message ?? `Error ${res.status}`, e?.fields);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
