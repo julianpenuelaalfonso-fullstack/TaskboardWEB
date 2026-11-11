@@ -1,4 +1,5 @@
-# Blueprint de Render: recrea la base de datos, la API y el frontend con un clic.
+# Blueprint de Render (v2): base de datos, API y frontend con un clic.
+# El navegador solo ve el Static Site; /api/* se reenvía a la API (mismo origen).
 databases:
   - name: taskboard-db
     plan: free
@@ -9,25 +10,44 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod # migra y arranca (el plan gratuito no tiene pre-deploy command)
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: taskboard-db
           property: connectionString
       - key: DB_SSL
         value: "false"
-      - key: FRONTEND_URL
-        sync: false # URL del Static Site, se pide al crear el Blueprint
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: APP_URL
+        sync: false # URL pública del Static Site, https y sin barra final
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false # obligatoria en producción: la API no arranca sin ella
+      - key: EMAIL_FROM
+        sync: false
+      - key: TRUST_PROXY_HOPS
+        sync: false # empezar con 1 y verificar tras el primer despliegue (ver README)
 
   - type: web
     name: taskboard-web
     runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        sync: false # URL pública de la API, sin barra final
+    routes:
+      # Si la API no se llama taskboard-api, su subdominio será otro: ajustar el destino.
+      - type: rewrite
+        source: /api/*
+        destination: https://taskboard-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
