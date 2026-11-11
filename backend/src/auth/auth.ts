@@ -22,6 +22,7 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 10,
     resetPasswordTokenExpiresIn: 3600,
+    revokeSessionsOnPasswordReset: true,
     // Sin await: el tiempo de respuesta no debe delatar si el correo existe. Better Auth ya
     // ejecuta esto con runInBackgroundOrAwait; aquí además se traga el error de envío.
     sendResetPassword: async ({ user, url }) => {

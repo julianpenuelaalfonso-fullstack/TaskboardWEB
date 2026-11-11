@@ -12,10 +12,20 @@ import { boardsRouter, workspaceBoardsRouter } from "./boards/routes.js";
 import { boardTasksRouter, tasksRouter } from "./tasks/routes.js";
 import { workspacesRouter } from "./workspaces/routes.js";
 
+// Diagnóstico temporal de TRUST_PROXY_HOPS: registra las primeras 20 peticiones y calla.
+export function logClientIp(limit = 20): express.RequestHandler {
+  let left = limit;
+  return (req, _res, next) => {
+    if (left-- > 0) console.log(`[client-ip] req.ip=${req.ip} x-forwarded-for=${req.headers["x-forwarded-for"] ?? "-"}`);
+    next();
+  };
+}
+
 export function createApp(): express.Express {
   const app = express();
   // Número exacto de proxies delante de la API (nunca `true`: permitiría falsificar X-Forwarded-For).
   app.set("trust proxy", env.TRUST_PROXY_HOPS);
+  if (env.DEBUG_CLIENT_IP && env.NODE_ENV !== "test") app.use(logClientIp());
   app.use(helmet());
   app.use(
     "/api",

@@ -73,6 +73,7 @@ Solo la API las usa; el Static Site no necesita ninguna.
 | `RESEND_API_KEY` | opcional (sin ella, correos por consola) | **obligatoria**: la API no arranca sin ella |
 | `EMAIL_FROM` | opcional | remitente, p. ej. `TaskBoard <no-reply@tu-dominio>` |
 | `TRUST_PROXY_HOPS` | `0` | número de proxies delante de la API (ver abajo) |
+| `DEBUG_CLIENT_IP` | opcional (`1` activa) | diagnóstico temporal de `TRUST_PROXY_HOPS` (ver abajo) |
 | `NODE_ENV` | `development` | `production` |
 | `PORT` | `3002` | la asigna Render, no definirla |
 
@@ -104,7 +105,11 @@ Notas:
 - `start:prod` ejecuta las migraciones (`node dist/db/migrate.js`) y luego arranca (el plan gratuito no tiene pre-deploy command). Con `NODE_ENV=production`, `npm ci` omite las devDependencies, por eso el build usa `--include=dev` (necesita `tsc`); en runtime no se usa `tsx`.
 - El subdominio de la API puede no ser `taskboard-api` (si el nombre está tomado, Render añade un sufijo): hay que actualizar el destino del rewrite en `render.yaml` con la URL real.
 - El rewrite añade latencia. Que las cookies de sesión funcionen a través de él es lo primero que hay que verificar tras desplegar: iniciar sesión, recargar y comprobar que la sesión persiste.
-- `TRUST_PROXY_HOPS` alimenta `req.ip`, el rate limit de Express y el de Better Auth. Viene fijado en `1` y hay que verificarlo tras el primer despliegue; si los logs muestran todas las peticiones con la misma IP, o el límite afecta a todos los usuarios a la vez, ajustar el valor.
+- `TRUST_PROXY_HOPS` alimenta `req.ip`, el rate limit de Express y el de Better Auth. En Render la ruta es navegador -> rewrite del Static Site -> balanceador de Render -> API, así que lo más probable es que haga falta `2` (hoy `render.yaml` dice `1`). Procedimiento para comprobarlo tras desplegar:
+  1. En la API, definir `DEBUG_CLIENT_IP=1` (registra `req.ip` y la cabecera `X-Forwarded-For` de las primeras 20 peticiones y luego calla).
+  2. Abrir la app desde dos redes distintas (p. ej. datos del móvil y Wi-Fi de casa) y leer los logs de la API.
+  3. `req.ip` debe mostrar la IP real de cada cliente. Si muestra una IP de Render/proxy (o la misma para ambas redes), subir `TRUST_PROXY_HOPS` (esperable `2`) y cambiarlo también en `render.yaml`, para que una sincronización del Blueprint no lo revierta.
+  4. Quitar `DEBUG_CLIENT_IP`.
 - Verificación: `https://<static>/api/health` debe responder `{"status":"ok"}`.
 - El plan gratuito suspende la API tras un rato sin uso; la primera petición puede tardar cerca de un minuto.
 

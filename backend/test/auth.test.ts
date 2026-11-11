@@ -53,6 +53,21 @@ test("recuperar contraseña: enlace de un solo uso", async () => {
   expect((await reset("otra-nueva-456")).status).toBe(400);
 });
 
+test("restablecer la contraseña revoca las sesiones abiertas", async () => {
+  const { agent } = await signUp("rev@test.dev");
+  expect((await agent.get("/api/workspaces")).status).toBe(200);
+  const before = sentEmails.length;
+  await request(createApp())
+    .post("/api/auth/request-password-reset")
+    .set("Origin", env.APP_URL)
+    .send({ email: "rev@test.dev", redirectTo: "/restablecer" });
+  await expect.poll(() => sentEmails.length).toBeGreaterThan(before);
+  const token = extractToken(sentEmails.at(-1)!.text);
+  const res = await request(createApp()).post("/api/auth/reset-password").set("Origin", env.APP_URL).send({ token, newPassword: "nueva-clave-123" });
+  expect(res.status).toBe(200);
+  expect((await agent.get("/api/workspaces")).status).toBe(401);
+});
+
 test("recuperar con correo inexistente responde igual que con uno existente", async () => {
   await signUp("e@test.dev");
   const send = (email: string) =>

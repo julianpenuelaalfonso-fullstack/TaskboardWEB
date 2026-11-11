@@ -17,6 +17,7 @@ export const envSchema = z.object({
   RESEND_API_KEY: optional,
   EMAIL_FROM: z.string().min(1).default("TaskBoard <no-reply@taskboard.local>"),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+  DEBUG_CLIENT_IP: z.enum(["1", "true", "0", "false"]).default("0").transform((v) => v === "1" || v === "true"),
   PORT: z.coerce.number().int().positive().default(3002),
 }).refine((v) => v.NODE_ENV !== "production" || v.RESEND_API_KEY, {
   path: ["RESEND_API_KEY"],

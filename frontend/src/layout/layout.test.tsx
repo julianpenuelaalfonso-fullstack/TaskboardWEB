@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { useDeleteWorkspace } from "../api/workspaces";
 import { ToastProvider } from "../ui/Toast";
@@ -26,6 +27,11 @@ function Deleter() {
   return <button onClick={() => del.mutate("w1")}>borrar-ws</button>;
 }
 
+function Failing() {
+  useQuery({ queryKey: ["falla"], retry: false, queryFn: async () => { throw new ApiError(500, "server", "boom"); } });
+  return <Link to="/app">salir</Link>;
+}
+
 function renderShell(client = new QueryClient({ defaultOptions: { queries: { retry: false } } }), url = "/app") {
   return render(
     <QueryClientProvider client={client}>
@@ -34,6 +40,7 @@ function renderShell(client = new QueryClient({ defaultOptions: { queries: { ret
           <Routes>
             <Route path="/app" element={<AppShell />}>
               <Route index element={<Deleter />} />
+              <Route path="falla" element={<Failing />} />
               <Route path="b/:boardId" element={<p>tablero</p>} />
             </Route>
           </Routes>
@@ -146,5 +153,13 @@ describe("AppShell", () => {
     fetchMock.mockImplementation(async () => json(200, ws));
     fireEvent.click(retry);
     await waitFor(() => expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument());
+  });
+
+  it("un error transitorio de una página ya abandonada no mantiene el aviso", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json(200, ws)));
+    renderShell(undefined, "/app/falla");
+    expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "salir" }));
+    await waitFor(() => expect(screen.queryByText(/No se pudo conectar con el servidor/)).not.toBeInTheDocument());
   });
 });

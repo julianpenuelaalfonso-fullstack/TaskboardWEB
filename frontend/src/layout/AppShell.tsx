@@ -13,7 +13,8 @@ function useServerState() {
   return useSyncExternalStore(
     (cb) => cache.subscribe(cb),
     () => {
-      const qs = cache.getAll();
+      // Solo consultas con observadores: un error de una página ya abandonada no debe seguir avisando.
+      const qs = cache.getAll().filter((q) => q.getObserversCount() > 0);
       if (qs.some((q) => q.state.fetchStatus === "fetching" && q.state.fetchFailureCount > 0 && transient(q.state.fetchFailureReason))) return "retrying";
       return qs.some((q) => q.state.status === "error" && q.state.fetchStatus !== "fetching" && transient(q.state.error)) ? "failed" : "ok";
     }
