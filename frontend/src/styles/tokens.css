@@ -10,6 +10,7 @@
   --done-text: #4a4f63;
   --danger: #c42b2b;
   --danger-bg: #fdeeee;
+  --overlay: rgba(20, 23, 43, 0.5);
 
   --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
