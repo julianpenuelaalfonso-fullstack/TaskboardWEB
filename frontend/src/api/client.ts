@@ -42,3 +42,8 @@ export const queryClient = new QueryClient({
     }
   }
 });
+
+export const send = (method: string, body?: unknown): RequestInit => ({
+  method,
+  body: body === undefined ? undefined : JSON.stringify(body)
+});
