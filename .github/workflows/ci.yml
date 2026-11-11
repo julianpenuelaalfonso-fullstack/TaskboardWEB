@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taskboard
+          POSTGRES_PASSWORD: taskboard_local
+          POSTGRES_DB: taskboard_test
+        # El puerto 15432 coincide con la URL fija de backend/vitest.config.ts y de Playwright.
+        ports:
+          - 15432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskboard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://taskboard:taskboard_local@127.0.0.1:15432/taskboard_test
+      NODE_ENV: test
+      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-32chars
+      APP_URL: http://localhost:5183
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run migrate
+        working-directory: backend
+      - name: Backend
+        working-directory: backend
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+      # E2E después de los tests del backend: ambos usan taskboard_test (los tests hacen TRUNCATE).
+      - name: E2E
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
