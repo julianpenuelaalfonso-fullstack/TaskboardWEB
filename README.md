@@ -1,106 +1,136 @@
-# TaskBoard
+# TaskBoard empresarial · INNOVA SOLUCIONES S.A.S.
 
-Gestor de tareas sencillo: crear, listar, marcar como completadas y eliminar tareas.
-Frontend y backend separados, comunicados por una API REST y desplegados en Render.
+Plataforma web para planificar, asignar y hacer seguimiento de las tareas y proyectos de los departamentos de una empresa ficticia (proyecto académico).
+El frontend y el backend están separados, se comunican por una API REST y se despliegan en Render.
 
-## Producción
+**Integrantes:** _(completar)_
 
-| Servicio | URL |
-|---|---|
-| Frontend (Static Site) | https://taskboard-web.onrender.com ← reemplazar por la real |
-| Backend health check | https://taskboard-api.onrender.com/api/health ← reemplazar por la real |
+## Enlaces en producción
 
-> El plan gratuito suspende la API tras un rato sin uso; la primera petición puede tardar cerca de un minuto.
+- Frontend (Static Site): _(pegar URL)_
+- Backend (Web Service): _(pegar URL)_ · health check: `/api/health`
+
+## Alcance implementado (Must Have, fases 1 a 4)
+
+| Módulo | Requerimientos | Estado |
+|---|---|---|
+| 1. Inicio de sesión y usuarios | RF-001 a RF-009 | Completo |
+| 2. Roles y permisos | RF-010 a RF-015 | Completo, validado en el servidor |
+| 3. Departamentos | RF-016 a RF-020 | Completo |
+| 4. Proyectos | RF-021 a RF-029 | Completo |
+| 5. Tareas | RF-030 a RF-044 | Completo excepto RF-037 (adjuntos, Should Have) |
+| 6. Tablero Kanban | RF-045 a RF-054 | Completo |
+| 7. Estados y seguimiento | RF-055 a RF-060 | Completo |
+| Reglas de negocio | RN-001 a RN-012 | Completas |
+| Módulos 8 a 12 (calendario, comentarios, notificaciones, dashboard, configuración) | RF-061 a RF-097 | Fases siguientes |
+
+Notas:
+- **RF-006 (recuperar contraseña):** el enlace se genera con un token de un solo uso que vence en 1 hora. Como no hay servicio de correo, el enlace se escribe en los logs del servidor; en desarrollo también aparece en pantalla.
+- **RNF-001:** las contraseñas se guardan con bcrypt. **RNF-002:** todos los permisos se validan en la API.
+
+## Roles y permisos
+
+| Acción | Admin | Gerente | Líder | Colaborador | Invitado |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Gestionar usuarios, roles y cuentas | ✔ | | | | |
+| Crear y editar departamentos | ✔ | | | | |
+| Ver todos los proyectos y tareas | ✔ | ✔ | | | |
+| Crear proyectos | ✔ | | ✔ (los lidera) | | |
+| Editar o archivar un proyecto | ✔ | | Sus proyectos | | |
+| Crear, editar, duplicar y archivar tareas | ✔ | | Sus proyectos | | |
+| Cambiar estado, subtareas y tiempo real | ✔ | | Sus proyectos | Sus tareas | |
+| Aprobar o rechazar tareas en revisión | ✔ | | Sus proyectos | | |
+| Eliminar tareas | ✔ | | | | |
+| Ver proyectos donde participa | ✔ | ✔ | ✔ | ✔ | ✔ (solo lectura) |
+
+Si el proyecto exige aprobación (RN-007), el colaborador no puede pasar una tarea a «Finalizada»: la envía a «En revisión» y el líder la aprueba o la rechaza con observaciones.
 
 ## Arquitectura
 
+| Componente | Tecnología | Servicio en Render |
+|---|---|---|
+| Frontend | React + Vite | Static Site |
+| Backend | Node.js + Express, JWT, bcrypt | Web Service |
+| Base de datos | PostgreSQL | Render Postgres |
+
 ```
-Navegador ──► Static Site (React + Vite) ──fetch──► Web Service (Express) ──SQL──► Render Postgres
+taskboard/
+├── backend/
+│   ├── index.js            → servidor y rutas
+│   ├── db.js               → conexión a PostgreSQL
+│   ├── schema.sql          → tablas y catálogos
+│   ├── init-db.js          → crea tablas y datos de ejemplo
+│   ├── middleware/auth.js  → sesión (JWT) y roles
+│   ├── lib/permissions.js  → matriz de permisos
+│   └── routes/             → auth, users, departments, projects, tasks
+└── frontend/src/
+    ├── pages/              → Login, Board (Kanban), Projects, Departments, Users, Profile
+    ├── components/         → TaskDrawer, TaskForm, componentes de interfaz
+    └── lib/                → api, auth, toast, formato
 ```
 
-| Componente | Tecnología | Servicio en Render | Carpeta |
-|---|---|---|---|
-| Frontend | React + Vite | Static Site | `frontend/` |
-| Backend | Node.js + Express | Web Service | `backend/` |
-| Base de datos | PostgreSQL | Render Postgres | `backend/schema.sql` |
+### Modelo de datos
 
-La API crea la tabla `tasks` al arrancar (`CREATE TABLE IF NOT EXISTS`), así que no hace falta ejecutar el script a mano. El mismo script está en `backend/schema.sql` por si se quiere correr desde psql, DBeaver o pgAdmin.
+`roles`, `users`, `departments`, `password_resets`, `statuses`, `priorities`, `projects`, `project_members`, `tasks`, `task_assignees`, `subtasks`, `task_history`. Las relaciones muchos a muchos (participantes de proyecto y responsables de tarea) usan tablas intermedias.
 
 ## API
 
-| Método | Ruta | Cuerpo | Respuestas |
-|---|---|---|---|
-| GET | `/api/health` | — | 200 `{"status":"ok"}` |
-| GET | `/api/tasks` | — | 200 lista de tareas |
-| POST | `/api/tasks` | `{"title":"..."}` | 201 tarea creada · 400 título vacío o > 200 caracteres |
-| PATCH | `/api/tasks/:id` | `{"done":true}` | 200 tarea actualizada · 400 datos inválidos · 404 no existe |
-| DELETE | `/api/tasks/:id` | — | 204 eliminada · 400 id inválido · 404 no existe |
-
-Errores inesperados (por ejemplo, la base de datos caída) responden 500 `{"error":"..."}`.
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/api/auth/login` | Iniciar sesión |
+| GET / PUT | `/api/auth/me` | Ver / actualizar perfil |
+| PUT | `/api/auth/me/password` | Cambiar contraseña |
+| POST | `/api/auth/forgot` · `/api/auth/reset` | Recuperar contraseña |
+| GET / POST / PUT | `/api/users` · `/api/users/:id` | Empleados |
+| PATCH | `/api/users/:id/active` | Activar o desactivar cuenta |
+| GET / POST / PUT | `/api/departments` · `/:id` · `/:id/members` | Departamentos |
+| GET / POST / PUT | `/api/projects` · `/:id` | Proyectos |
+| PATCH | `/api/projects/:id/archive` | Archivar proyecto |
+| GET / POST / PUT | `/api/tasks` · `/:id` | Tareas (filtros: `project_id`, `assignee_id`, `priority_id`, `status_id`, `q`, `overdue`) |
+| PATCH | `/api/tasks/:id/status` | Cambiar estado (Kanban) |
+| POST | `/api/tasks/:id/review` | Aprobar o rechazar |
+| POST | `/api/tasks/:id/duplicate` | Duplicar |
+| PATCH | `/api/tasks/:id/time` · `/:id/archive` | Tiempo real · archivar |
+| DELETE | `/api/tasks/:id` | Eliminar (solo admin) |
+| POST / PATCH / DELETE | `/api/tasks/:id/subtasks[/:subId]` | Subtareas |
+| GET | `/api/meta` | Estados, prioridades y roles |
 
 ## Ejecución local
 
-Requisitos: Node.js LTS (20 o superior), Git y una base de datos Postgres en Render.
+1. **Backend**
+   ```bash
+   cd backend
+   copy .env.example .env     # completar DATABASE_URL (External URL) y JWT_SECRET
+   npm install
+   npm run db:init            # crea tablas y datos de ejemplo
+   npm start                  # http://localhost:3000/api/health
+   ```
+2. **Frontend** (otra terminal)
+   ```bash
+   cd frontend
+   copy .env.example .env     # VITE_API_URL=http://localhost:3000
+   npm install
+   npm run dev                # http://localhost:5173
+   ```
 
-**Backend**
+### Cuentas de demostración
 
-```bash
-cd backend
-cp .env.example .env    # completar DATABASE_URL con la External Database URL
-npm install
-npm start               # http://localhost:3000
-```
+Contraseña para todas: `Innova2026*`
 
-**Frontend** (en otra terminal)
-
-```bash
-cd frontend
-cp .env.example .env
-npm install
-npm run dev             # http://localhost:5173
-```
-
-**Pruebas rápidas con curl**
-
-```bash
-curl http://localhost:3000/api/health
-curl -X POST http://localhost:3000/api/tasks -H "Content-Type: application/json" -d "{\"title\":\"Primera tarea\"}"
-curl http://localhost:3000/api/tasks
-curl -X PATCH http://localhost:3000/api/tasks/1 -H "Content-Type: application/json" -d "{\"done\":true}"
-curl -X DELETE http://localhost:3000/api/tasks/1
-```
-
-## Variables de entorno
-
-| Variable | Dónde | Local | Producción |
-|---|---|---|---|
-| `DATABASE_URL` | backend | External Database URL | Internal Database URL |
-| `DB_SSL` | backend | `true` | `false` |
-| `FRONTEND_URL` | backend | `http://localhost:5173` | URL del Static Site, con `https` y sin barra final |
-| `PORT` | backend | `3000` | la asigna Render, no definirla |
-| `VITE_API_URL` | frontend | `http://localhost:3000` | URL pública del backend, sin barra final |
-
-Los archivos `.env` no se suben al repositorio (ver `.gitignore`); usar los `.env.example` como plantilla.
-`VITE_API_URL` se incrusta al compilar: si cambia, hay que hacer **Manual Deploy → Deploy latest commit** del Static Site.
+| Rol | Correo |
+|---|---|
+| Administrador | admin@innova.com |
+| Gerente | gerente@innova.com |
+| Líder de equipo | lider@innova.com |
+| Colaborador | colaborador@innova.com · valentina@innova.com |
+| Invitado | invitado@innova.com |
 
 ## Despliegue en Render
 
-**Opción A, manual**
+**Backend (Web Service):** Root Directory `backend`, Build `npm install`, Start `npm start`, Health Check `/api/health`.
+Variables: `DATABASE_URL` (Internal Database URL), `DB_SSL=false`, `FRONTEND_URL` (URL del Static Site, sin barra final), `JWT_SECRET` (texto largo y aleatorio), `NODE_ENV=production`.
 
-1. **New → Postgres**: `taskboard-db`, plan Free. Copiar la Internal y la External Database URL.
-2. **New → Web Service** con este repositorio: Root Directory `backend`, Build `npm install`, Start `npm start`, Health Check Path `/api/health`, plan Free. Variables: `DATABASE_URL` (interna), `DB_SSL=false`, `FRONTEND_URL` (paso 4).
-3. **New → Static Site**: Root Directory `frontend`, Build `npm install && npm run build`, Publish Directory `dist`. Variable: `VITE_API_URL` = URL del backend.
-4. Copiar la URL del Static Site y ponerla en `FRONTEND_URL` del backend.
+**Frontend (Static Site):** Root Directory `frontend`, Build `npm install && npm run build`, Publish `dist`.
+Variable: `VITE_API_URL` (URL del backend, sin barra final). Si cambia, hay que volver a desplegar.
 
-**Opción B, Blueprint**: **New → Blueprint**, elegir el repositorio; Render lee `render.yaml`, crea los tres servicios y pide `FRONTEND_URL` y `VITE_API_URL`.
-
-Cada `git push` a `main` vuelve a desplegar ambos servicios automáticamente.
-
-## Problemas frecuentes
-
-| Síntoma | Solución |
-|---|---|
-| Error de CORS en la consola | `FRONTEND_URL` debe coincidir exacto con la URL del Static Site (https, sin barra final). |
-| El frontend llama a `localhost` | Definir `VITE_API_URL` en el Static Site y volver a desplegar. |
-| Error de conexión a la BD | En producción usar la Internal Database URL con `DB_SSL=false`. |
-| La primera carga tarda ~1 minuto | Normal en el plan gratuito; la interfaz muestra un mensaje y un botón para reintentar. |
+**Base de datos:** ejecutar `npm run db:init` una vez desde el equipo local con la External Database URL.
