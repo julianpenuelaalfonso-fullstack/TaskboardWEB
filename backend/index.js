@@ -1,74 +1,52 @@
 const express = require("express");
 const cors = require("cors");
-const { Pool } = require("pg");
 require("dotenv").config();
 
+const pool = require("./db");
+const { requireAuth } = require("./middleware/auth");
+const { ah } = require("./lib/http");
+
 const app = express();
-app.use(express.json());
-app.use(cors({ origin: process.env.FRONTEND_URL }));
+app.use(express.json({ limit: "1mb" }));
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false
-});
+// CORS: solo el origen del frontend (se pueden separar varios con comas)
+const origins = (process.env.FRONTEND_URL || "").split(",").map((o) => o.trim()).filter(Boolean);
+app.use(cors({ origin: origins.length ? origins : false }));
 
-// Mismo script de la guía; se ejecuta al arrancar para no depender de un cliente SQL.
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS tasks (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(200) NOT NULL,
-  done BOOLEAN DEFAULT false,
-  created_at TIMESTAMP DEFAULT NOW()
-);`;
-
-// Devuelve el id como entero positivo, o null si no es válido.
-const parseId = (value) => (/^\d+$/.test(value) ? Number(value) : null);
-
+// Health check para Render
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-app.get("/api/tasks", async (req, res) => {
-  const { rows } = await pool.query("SELECT * FROM tasks ORDER BY id");
-  res.json(rows);
-});
+// Rutas públicas de autenticación
+const auth = require("./routes/auth");
+app.use("/api/auth", auth.router);
 
-app.post("/api/tasks", async (req, res) => {
-  const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
-  if (!title) return res.status(400).json({ error: "El título es obligatorio" });
-  if (title.length > 200) return res.status(400).json({ error: "El título admite máximo 200 caracteres" });
-  const { rows } = await pool.query(
-    "INSERT INTO tasks (title) VALUES ($1) RETURNING *", [title]);
-  res.status(201).json(rows[0]);
-});
+// A partir de aquí todo requiere sesión
+app.use("/api", requireAuth);
 
-app.patch("/api/tasks/:id", async (req, res) => {
-  const id = parseId(req.params.id);
-  if (id === null) return res.status(400).json({ error: "Id inválido" });
-  const { done } = req.body ?? {};
-  if (typeof done !== "boolean") return res.status(400).json({ error: "El campo done debe ser true o false" });
-  const { rows } = await pool.query(
-    "UPDATE tasks SET done = $1 WHERE id = $2 RETURNING *", [done, id]);
-  if (rows.length === 0) return res.status(404).json({ error: "Tarea no encontrada" });
-  res.json(rows[0]);
-});
+// Catálogos para los formularios
+app.get("/api/meta", ah(async (req, res) => {
+  const [statuses, priorities, roles] = await Promise.all([
+    pool.query("SELECT id, name, is_closed FROM statuses ORDER BY sort_order"),
+    pool.query("SELECT id, name FROM priorities ORDER BY sort_order"),
+    pool.query("SELECT id, name, description FROM roles ORDER BY CASE id WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 WHEN 'gerente' THEN 3 WHEN 'lider' THEN 4 WHEN 'colaborador' THEN 5 ELSE 6 END")
+  ]);
+  res.json({ statuses: statuses.rows, priorities: priorities.rows, roles: roles.rows });
+}));
 
-app.delete("/api/tasks/:id", async (req, res) => {
-  const id = parseId(req.params.id);
-  if (id === null) return res.status(400).json({ error: "Id inválido" });
-  const { rowCount } = await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
-  if (rowCount === 0) return res.status(404).json({ error: "Tarea no encontrada" });
-  res.status(204).end();
-});
+app.use("/api/users", require("./routes/users"));
+app.use("/api/departments", require("./routes/departments"));
+app.use("/api/projects", require("./routes/projects"));
+app.use("/api/tasks", require("./routes/tasks"));
 
-// Express 5 envía aquí los errores de las rutas async (por ejemplo, la BD caída).
+app.use("/api", (req, res) => res.status(404).json({ error: "Ruta no encontrada." }));
+
+// Manejador central de errores
 app.use((err, req, res, next) => {
-  if (err.type === "entity.parse.failed") return res.status(400).json({ error: "JSON inválido" });
+  if (err.status) return res.status(err.status).json({ error: err.message });
+  if (err.type === "entity.parse.failed") return res.status(400).json({ error: "El cuerpo de la petición no es JSON válido." });
   console.error(err);
-  res.status(500).json({ error: "Error interno del servidor" });
+  res.status(500).json({ error: "Ocurrió un error inesperado en el servidor." });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API escuchando en el puerto ${PORT}`));
-
-pool.query(SCHEMA)
-  .then(() => console.log("Tabla tasks lista"))
-  .catch((err) => console.error("No se pudo preparar la base de datos:", err.message));
