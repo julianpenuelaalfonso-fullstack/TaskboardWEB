@@ -4,7 +4,7 @@ Plataforma web para planificar, asignar y hacer seguimiento de las tareas y proy
 Nació como proyecto académico con el caso de estudio INNOVA SOLUCIONES S.A.S. y hoy es el **prototipo (beta) del TaskBoard de Industrias Caslop**.
 El frontend y el backend están separados, se comunican por una API REST y se despliegan en Render.
 
-**Integrantes:** Diego Alejandro López Castellanos ([@diego311204](https://github.com/diego311204)) · Julián Andrés Peñuela Alfonso ([@julianpenuelaalfonso-fullstack](https://github.com/julianpenuelaalfonso-fullstack)) · [@AlejoCtr](https://github.com/AlejoCtr)
+**Integrantes:** Diego Alejandro López Castellanos ([@diego311204](https://github.com/diego311204)) · Julián Andrés Peñuela Alfonso ([@julianpenuelaalfonso-fullstack](https://github.com/julianpenuelaalfonso-fullstack)) · Alejandro García ([@AlejoCtr](https://github.com/AlejoCtr))
 
 **Documentación:** el documento *TaskBoard · Documentación del proyecto v1.0* (PDF) reúne los entregables 1 a 9: visión y alcance, SRS, historias de usuario, UML, modelo entidad-relación, prototipos, matriz de permisos, plan de pruebas y manuales. El levantamiento de requerimientos original está en `Levantamiento_Requerimientos.docx`.
 
