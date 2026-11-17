@@ -75,6 +75,12 @@ router.get("/", ah(async (req, res) => {
   if (req.query.priority_id) add(req.query.priority_id, "t.priority_id = ?");
   if (req.query.status_id) add(req.query.status_id, "t.status_id = ?");
   if (req.query.q) add(`%${req.query.q}%`, "t.title ILIKE ?");
+  // Rango de fechas para el calendario: tareas cuyo inicio o vencimiento cae en el rango (RF-061 a RF-063)
+  if (isDate(req.query.from) && isDate(req.query.to)) {
+    params.push(req.query.from, req.query.to);
+    const a = `$${params.length - 1}`, b = `$${params.length}`;
+    where.push(`(t.due_date BETWEEN ${a} AND ${b} OR (t.start_date IS NOT NULL AND t.start_date <= ${b} AND t.due_date >= ${a}))`);
+  }
   if (req.query.overdue === "true") where.push("t.due_date < CURRENT_DATE AND t.status_id NOT IN ('finalizada','cancelada')");
   if (req.query.archived !== "true") where.push("NOT t.archived");
 
@@ -265,6 +271,27 @@ router.patch("/:id/status", ah(async (req, res) => {
 
   await pool.query("UPDATE tasks SET status_id = $1, updated_at = NOW() WHERE id = $2", [next, task.id]);
   await logHistory(pool, task.id, req.user.id, "estado", `${STATUS_NAMES[task.status_id]} → ${STATUS_NAMES[next]}`);
+  res.json(withPermissions(req.user, await loadTask(task.id)));
+}));
+
+// RF-065: reprogramar la tarea (desde el calendario). Solo el líder del proyecto o un administrador.
+router.patch("/:id/reschedule", ah(async (req, res) => {
+  const { task } = await loadTaskForUser(req.user, idParam(req.params.id));
+  if (!task.can_manage) throw new HttpError(403, "Solo el líder del proyecto o un administrador pueden reprogramar la tarea.");
+  const due = req.body.due_date;
+  if (!isDate(due)) throw new HttpError(400, "La nueva fecha de vencimiento no es válida.");
+  let start = task.start_date;
+  // Si se mueve la tarea completa, el inicio se desplaza los mismos días para conservar la duración
+  if (start && req.body.keep_duration !== false) {
+    const shift = (Date.parse(due) - Date.parse(task.due_date)) / 86400000;
+    const d = new Date(Date.parse(start) + shift * 86400000);
+    start = d.toISOString().slice(0, 10);
+  }
+  if (start && start > due) throw new HttpError(400, "El vencimiento no puede quedar antes de la fecha de inicio.");
+  if (due === task.due_date) return res.json(task);
+  await pool.query("UPDATE tasks SET due_date = $1, start_date = $2, updated_at = NOW() WHERE id = $3", [due, start || null, task.id]);
+  await logHistory(pool, task.id, req.user.id, "reprogramada",
+    `Vencimiento: ${task.due_date} → ${due}${task.start_date && start !== task.start_date ? ` · Inicio: ${task.start_date} → ${start}` : ""}`);
   res.json(withPermissions(req.user, await loadTask(task.id)));
 }));
 

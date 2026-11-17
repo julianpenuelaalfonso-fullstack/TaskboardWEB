@@ -38,3 +38,24 @@ export async function api(path, { method = "GET", body } = {}) {
   }
   return res.status === 204 ? null : res.json();
 }
+
+// Descarga un archivo de la API (por ejemplo, el reporte en Excel) con la sesión actual
+export async function downloadFile(path, fallbackName) {
+  const res = await fetch(`${API}/api${path}`, {
+    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Error ${res.status}`);
+  }
+  const blob = await res.blob();
+  const match = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = match ? match[1] : fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

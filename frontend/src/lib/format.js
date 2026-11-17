@@ -45,3 +45,20 @@ export function formatDateTime(value) {
     day: "numeric", month: "short", hour: "numeric", minute: "2-digit"
   });
 }
+
+// ---- Fechas para calendario y dashboard ----
+export function toISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+// Lunes de la semana de la fecha (la semana empieza en lunes)
+export function startOfWeek(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return addDays(x, -((x.getDay() + 6) % 7));
+}

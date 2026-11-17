@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { KanbanSquare, FolderKanban, Building2, Users, UserRound, LogOut, Menu, X } from "lucide-react";
+import { KanbanSquare, CalendarDays, LayoutDashboard, FolderKanban, Building2, Users, UserRound, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "./lib/auth";
 import { Avatar } from "./components/ui";
 import Login from "./pages/Login";
 import Board from "./pages/Board";
+import Calendar from "./pages/Calendar";
+import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Departments from "./pages/Departments";
 import UsersPage from "./pages/Users";
@@ -36,6 +38,8 @@ export default function App() {
 
   const nav = [
     { id: "tablero", label: "Tablero", icon: KanbanSquare },
+    { id: "calendario", label: "Calendario", icon: CalendarDays },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "proyectos", label: "Proyectos", icon: FolderKanban },
     { id: "departamentos", label: "Departamentos", icon: Building2 },
     ...(permissions.manageUsers ? [{ id: "usuarios", label: "Usuarios", icon: Users }] : []),
@@ -44,6 +48,8 @@ export default function App() {
 
   const pages = {
     tablero: <Board params={route.params} />,
+    calendario: <Calendar />,
+    dashboard: <Dashboard />,
     proyectos: <Projects />,
     departamentos: <Departments />,
     usuarios: permissions.manageUsers ? <UsersPage /> : null,
