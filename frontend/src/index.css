@@ -749,3 +749,14 @@ select { cursor: pointer; }
   .dash-panel, .stats, tr { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Invitaciones */
+.invite-pending { display: flex; align-items: center; gap: var(--s-2); margin-top: 6px; flex-wrap: wrap; }
+.chip-pending { background: var(--warn-soft); color: #7a4f0e; }
+.invite-pending .link-btn { font-size: var(--fs-xs); }
+.invite-result { display: flex; flex-direction: column; gap: var(--s-4); }
+.invite-result p { margin: 0; }
+.invite-result .notice { display: flex; gap: var(--s-2); align-items: flex-start; }
+.invite-result .muted { display: flex; gap: var(--s-2); align-items: flex-start; font-size: var(--fs-sm); }
+.copy-row { display: flex; gap: var(--s-2); }
+.copy-row input { flex: 1; font-size: var(--fs-sm); }

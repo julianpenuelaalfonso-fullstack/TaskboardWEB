@@ -1,9 +1,11 @@
 const express = require("express");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const pool = require("../db");
 const { requireRole } = require("../middleware/auth");
 const { ah, HttpError, isEmail, text, idParam } = require("../lib/http");
 const { validatePassword, loadProfile } = require("./auth");
+const { sendInvite } = require("../lib/invitations");
 
 const router = express.Router();
 const ADMIN = requireRole("superadmin", "admin");
@@ -14,7 +16,7 @@ router.get("/", ah(async (req, res) => {
   const admin = ["superadmin", "admin"].includes(req.user.role_id);
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.role_id, r.name AS role_name, u.department_id, d.name AS department_name,
-            u.position, u.active ${admin ? ", u.email, u.phone, u.created_at" : ""}
+            u.position, u.active ${admin ? ", u.email, u.phone, u.created_at, u.password_set" : ""}
      FROM users u
      JOIN roles r ON r.id = u.role_id
      LEFT JOIN departments d ON d.id = u.department_id
@@ -53,22 +55,41 @@ function checkRoleAssignment(req, roleId) {
   }
 }
 
-// RF-003, RF-007, RF-008: registrar empleado con rol y departamento
+// RF-003, RF-007, RF-008: registrar empleado con rol y departamento.
+// Por defecto se envía una invitación por correo para que el empleado cree su propia contraseña.
+// Si el administrador prefiere, puede fijar una contraseña inicial (send_invite: false).
 router.post("/", ADMIN, ah(async (req, res) => {
-  const data = await validateUserBody(req.body, { requirePassword: true });
+  // Invitación si se pide explícitamente, o si no se envió contraseña
+  const invite = req.body.send_invite === true || (req.body.send_invite === undefined && !req.body.password);
+  const data = await validateUserBody(req.body, { requirePassword: !invite });
   checkRoleAssignment(req, data.role_id);
-  const hash = await bcrypt.hash(req.body.password, 10);
+  // Con invitación, la cuenta arranca con una contraseña aleatoria que nadie conoce
+  const secret = invite ? crypto.randomBytes(32).toString("hex") : req.body.password;
+  const hash = await bcrypt.hash(secret, 10);
+  let id;
   try {
     const { rows } = await pool.query(
-      `INSERT INTO users (name, email, password_hash, role_id, department_id, position, phone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [data.name, data.email, hash, data.role_id, data.department_id, data.position, data.phone]
+      `INSERT INTO users (name, email, password_hash, role_id, department_id, position, phone, password_set)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [data.name, data.email, hash, data.role_id, data.department_id, data.position, data.phone, !invite]
     );
-    res.status(201).json(await loadProfile(rows[0].id));
+    id = rows[0].id;
   } catch (err) {
     if (err.code === "23505") throw new HttpError(409, "Ya existe un usuario con ese correo."); // RNF-009
     throw err;
   }
+  const profile = await loadProfile(id);
+  res.status(201).json(invite ? { ...profile, invite: await sendInvite(id, req.user) } : profile);
+}));
+
+// Reenviar la invitación (anula el enlace anterior)
+router.post("/:id/invite", ADMIN, ah(async (req, res) => {
+  const id = idParam(req.params.id);
+  const { rows } = await pool.query("SELECT active, password_set FROM users WHERE id = $1", [id]);
+  if (!rows[0]) throw new HttpError(404, "Usuario no encontrado.");
+  if (!rows[0].active) throw new HttpError(400, "La cuenta está desactivada. Actívala antes de reenviar la invitación.");
+  if (rows[0].password_set) throw new HttpError(400, "Esta persona ya creó su contraseña. Si la olvidó, puede usar «¿Olvidaste tu contraseña?».");
+  res.json(await sendInvite(id, req.user));
 }));
 
 // RF-004: editar empleado
@@ -92,7 +113,7 @@ router.put("/:id", ADMIN, ah(async (req, res) => {
   }
   if (req.body.password) {
     const hash = await bcrypt.hash(req.body.password, 10);
-    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, id]);
+    await pool.query("UPDATE users SET password_hash = $1, password_set = true WHERE id = $2", [hash, id]);
   }
   res.json(await loadProfile(id));
 }));

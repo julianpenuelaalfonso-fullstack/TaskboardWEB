@@ -77,6 +77,22 @@ ${details}
   }
 }
 
+// Invitación para que el empleado cree su contraseña
+function inviteEmail({ name, invitedBy, roleName, departmentName, link, hours }) {
+  const first = String(name || "").split(" ")[0];
+  return layout({
+    preheader: `${invitedBy} te invitó a TaskBoard. Crea tu contraseña para empezar.`,
+    title: `Bienvenido a TaskBoard, ${esc(first)}`,
+    body: `<p style="margin:0 0 8px;font-size:15px">${esc(invitedBy)} creó tu cuenta en TaskBoard, la plataforma donde el equipo organiza proyectos y tareas.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border-top:1px solid #e4e1d8;border-bottom:1px solid #e4e1d8;width:100%">
+${row("Rol", esc(roleName))}
+${departmentName ? row("Departamento", esc(departmentName)) : ""}
+</table>
+<p style="margin:0;font-size:14px">Para entrar, crea tu contraseña con el botón. El enlace vence en ${hours} horas y solo se puede usar una vez.</p>`,
+    button: { href: link, label: "Crear mi contraseña" }
+  });
+}
+
 // RF-006: correo de recuperación de contraseña
 function passwordResetEmail(link) {
   return layout({
@@ -88,4 +104,4 @@ function passwordResetEmail(link) {
   });
 }
 
-module.exports = { notifyTaskAssigned, passwordResetEmail };
+module.exports = { notifyTaskAssigned, passwordResetEmail, inviteEmail };

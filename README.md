@@ -25,7 +25,8 @@ El frontend y el backend están separados, se comunican por una API REST y se de
 | Módulos 8 a 12 (calendario, comentarios, notificaciones, dashboard, configuración) | RF-061 a RF-097 | Fases siguientes |
 
 Notas:
-- **RF-006 (recuperar contraseña):** el enlace se genera con un token de un solo uso que vence en 1 hora. Como no hay servicio de correo, el enlace se escribe en los logs del servidor; en desarrollo también aparece en pantalla.
+- **RF-006 (recuperar contraseña):** el enlace se genera con un token de un solo uso que vence en 1 hora y llega por correo (ver *Correos*).
+- **Alta de usuarios por invitación:** no hay registro público; solo el administrador crea cuentas. Por defecto la persona recibe un correo con un enlace (un solo uso, 72 horas) para crear su propia contraseña, y la tabla de usuarios la muestra como *Invitación pendiente* con opción de reenviar. Si el correo no sale, el administrador ve el enlace para copiarlo. También puede asignar una contraseña inicial a mano.
 - **RNF-001:** las contraseñas se guardan con bcrypt. **RNF-002:** todos los permisos se validan en la API.
 
 ## Roles y permisos
@@ -80,7 +81,9 @@ taskboard/
 | POST | `/api/auth/login` | Iniciar sesión |
 | GET / PUT | `/api/auth/me` | Ver / actualizar perfil |
 | PUT | `/api/auth/me/password` | Cambiar contraseña |
-| POST | `/api/auth/forgot` · `/api/auth/reset` | Recuperar contraseña |
+| POST | `/api/auth/forgot` · `/api/auth/reset` | Recuperar contraseña / activar cuenta invitada |
+| GET | `/api/auth/link/:token` | Valida un enlace de invitación o recuperación |
+| POST | `/api/users/:id/invite` | Reenviar invitación (administrador) |
 | GET / POST / PUT | `/api/users` · `/api/users/:id` | Empleados |
 | PATCH | `/api/users/:id/active` | Activar o desactivar cuenta |
 | GET / POST / PUT | `/api/departments` · `/:id` · `/:id/members` | Departamentos |
@@ -131,6 +134,7 @@ El sistema envía correos desde la cuenta de Zoho de la empresa usando la **API 
 
 - **Tarea asignada (RF-073):** al crear una tarea, cada responsable recibe un correo con el título, el proyecto, la descripción, la prioridad, las fechas, quién la asignó y un botón que abre la tarea (`#/tablero?tarea=ID`). Al editar una tarea, solo se avisa a los responsables nuevos. Quien crea la tarea no recibe aviso.
 - **Recuperación de contraseña (RF-006):** el enlace llega por correo.
+- **Invitación de usuarios nuevos:** enlace para crear la contraseña.
 - Los envíos se hacen en segundo plano: si Zoho falla, la operación se completa igual y el error queda en los logs. Si las variables no están configuradas, el correo solo se escribe en los logs.
 
 **Configuración (una sola vez):**
@@ -139,6 +143,9 @@ El sistema envía correos desde la cuenta de Zoho de la empresa usando la **API 
 3. En Render (Web Service → Environment) define `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_DC` (`com`, `eu`, `in`…) y `MAIL_FROM` (el correo de la cuenta que autorizó la app). Nunca subas estos valores a GitHub.
 
 ## Despliegue en Render
+
+El servidor actualiza el esquema de la base de datos al arrancar (`schema.sql` es idempotente), así que después de un despliegue no hace falta correr `db:init` a mano.
+
 
 **Backend (Web Service):** Root Directory `backend`, Build `npm install`, Start `npm start`, Health Check `/api/health`.
 Variables: `DATABASE_URL` (Internal Database URL), `DB_SSL=false`, `FRONTEND_URL` (URL del Static Site, sin barra final), `JWT_SECRET` (texto largo y aleatorio), `NODE_ENV=production` y, para los correos, las variables `ZOHO_*` y `MAIL_FROM` (sección anterior).

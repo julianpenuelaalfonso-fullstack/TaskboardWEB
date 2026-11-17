@@ -1,5 +1,4 @@
 const express = require("express");
-const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const pool = require("../db");
 const { signToken, requireAuth } = require("../middleware/auth");
@@ -7,11 +6,12 @@ const { permissionsFor } = require("../lib/permissions");
 const { ah, HttpError, text } = require("../lib/http");
 const { sendInBackground } = require("../lib/mailer");
 const { passwordResetEmail } = require("../lib/emails");
+const { createLink, findValidLink } = require("../lib/invitations");
 
 const router = express.Router();
 
 const USER_FIELDS = `u.id, u.name, u.email, u.role_id, r.name AS role_name, u.department_id,
-  d.name AS department_name, u.position, u.phone, u.active`;
+  d.name AS department_name, u.position, u.phone, u.active, u.password_set`;
 
 async function loadProfile(id) {
   const { rows } = await pool.query(
@@ -84,14 +84,7 @@ router.post("/forgot", ah(async (req, res) => {
   const response = { message: "Si el correo está registrado, recibirás instrucciones para restablecer la contraseña." };
 
   if (user && user.active) {
-    const token = crypto.randomBytes(24).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    await pool.query(
-      "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 hour')",
-      [user.id, tokenHash]
-    );
-    const base = (process.env.FRONTEND_URL || "http://localhost:5173").split(",")[0].trim().replace(/\/$/, "");
-    const link = `${base}/?reset=${token}`;
+    const link = await createLink(user.id, "reset");
     // En segundo plano: la respuesta tarda lo mismo exista o no la cuenta
     sendInBackground({ to: email, subject: "Recupera tu contraseña de TaskBoard", html: passwordResetEmail(link) }, "recuperación");
     // Solo en desarrollo se devuelve el enlace para poder probar sin correo
@@ -100,21 +93,34 @@ router.post("/forgot", ah(async (req, res) => {
   res.json(response);
 }));
 
-// RF-006: restablecer la contraseña con el token
+// Datos del enlace (para saludar por nombre en «Activa tu cuenta» o «Crea una contraseña nueva»)
+router.get("/link/:token", ah(async (req, res) => {
+  const link = await findValidLink(req.params.token);
+  if (!link) throw new HttpError(404, "El enlace venció o ya fue usado.");
+  res.json({ kind: link.kind, name: link.name, email: link.email });
+}));
+
+// RF-006 e invitaciones: crear la contraseña con el enlace. Al terminar, la persona queda con la sesión iniciada.
 router.post("/reset", ah(async (req, res) => {
   const { token, password } = req.body;
-  if (!token) throw new HttpError(400, "El enlace de recuperación no es válido.");
+  const link = await findValidLink(token);
+  if (!link) throw new HttpError(400, "El enlace venció o ya fue usado. Pide uno nuevo.");
   validatePassword(password);
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  const { rows } = await pool.query(
-    "SELECT * FROM password_resets WHERE token_hash = $1 AND used = false AND expires_at > NOW()",
-    [tokenHash]
-  );
-  if (!rows[0]) throw new HttpError(400, "El enlace venció o ya fue usado. Solicita uno nuevo.");
   const hash = await bcrypt.hash(password, 10);
-  await pool.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [hash, rows[0].user_id]);
-  await pool.query("UPDATE password_resets SET used = true WHERE id = $1", [rows[0].id]);
-  res.json({ message: "Contraseña actualizada. Ya puedes iniciar sesión." });
+  await pool.query(
+    "UPDATE users SET password_hash = $1, password_set = true, updated_at = NOW() WHERE id = $2",
+    [hash, link.user_id]
+  );
+  // El enlace y cualquier otro pendiente de la misma persona dejan de servir
+  await pool.query("UPDATE password_resets SET used = true WHERE user_id = $1 AND used = false", [link.user_id]);
+
+  const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [link.user_id]);
+  res.json({
+    message: link.kind === "invite" ? "Tu cuenta quedó activa. ¡Bienvenido!" : "Contraseña actualizada.",
+    token: signToken(rows[0]),
+    user: await loadProfile(link.user_id),
+    permissions: permissionsFor(rows[0])
+  });
 }));
 
 module.exports = { router, validatePassword, loadProfile };

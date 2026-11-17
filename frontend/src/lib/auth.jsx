@@ -31,11 +31,15 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("taskboard:logout", onLogout);
   }, []);
 
-  const login = async (email, password) => {
-    const data = await api("/auth/login", { method: "POST", body: { email, password } });
+  // Abre la sesión con la respuesta del servidor (login, o activación de cuenta desde un enlace)
+  const startSession = async (data) => {
     setToken(data.token);
     await loadMeta();
     setSession({ user: data.user, permissions: data.permissions });
+  };
+
+  const login = async (email, password) => {
+    await startSession(await api("/auth/login", { method: "POST", body: { email, password } }));
   };
 
   // RF-002: cerrar sesión
@@ -48,7 +52,7 @@ export function AuthProvider({ children }) {
   const updateUser = (user) => setSession((s) => ({ ...s, user }));
 
   return (
-    <AuthContext.Provider value={{ ...session, meta, checking, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ ...session, meta, checking, login, startSession, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -137,6 +137,12 @@ CREATE TABLE IF NOT EXISTS task_history (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Invitaciones por correo (v1.1): saber si el usuario ya creó su contraseña
+-- y distinguir los enlaces de invitación de los de recuperación
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_set BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS kind VARCHAR(10) NOT NULL DEFAULT 'reset';
+CREATE INDEX IF NOT EXISTS idx_resets_user ON password_resets(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date);
 CREATE INDEX IF NOT EXISTS idx_history_task ON task_history(task_id);

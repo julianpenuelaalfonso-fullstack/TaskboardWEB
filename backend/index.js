@@ -50,4 +50,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`API escuchando en el puerto ${PORT}`));
+require("./lib/migrate")()
+  .then(() => console.log("Esquema de base de datos al día."))
+  .catch((err) => console.error("No se pudo actualizar el esquema:", err.message))
+  .finally(() => app.listen(PORT, () => console.log(`API escuchando en el puerto ${PORT}`)));
