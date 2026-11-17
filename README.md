@@ -1,28 +1,43 @@
-# TaskBoard empresarial · INNOVA SOLUCIONES S.A.S.
+# TaskBoard empresarial
 
-Plataforma web para planificar, asignar y hacer seguimiento de las tareas y proyectos de los departamentos de una empresa ficticia (proyecto académico).
+Plataforma web para planificar, asignar y hacer seguimiento de las tareas y proyectos de los departamentos de una empresa.
+Nació como proyecto académico con el caso de estudio INNOVA SOLUCIONES S.A.S. y hoy es el **prototipo (beta) del TaskBoard de Industrias Caslop**.
 El frontend y el backend están separados, se comunican por una API REST y se despliegan en Render.
 
-**Integrantes:** _(completar)_
+**Integrantes:** Diego Alejandro López Castellanos ([@diego311204](https://github.com/diego311204)) · Julián Andrés Peñuela Alfonso ([@julianpenuelaalfonso-fullstack](https://github.com/julianpenuelaalfonso-fullstack)) · [@AlejoCtr](https://github.com/AlejoCtr)
+
+**Documentación:** el documento *TaskBoard · Documentación del proyecto v1.0* (PDF) reúne los entregables 1 a 9: visión y alcance, SRS, historias de usuario, UML, modelo entidad-relación, prototipos, matriz de permisos, plan de pruebas y manuales. El levantamiento de requerimientos original está en `Levantamiento_Requerimientos.docx`.
 
 ## Enlaces en producción
 
-- Frontend (Static Site): _(pegar URL)_
-- Backend (Web Service): _(pegar URL)_ · health check: `/api/health`
+- Aplicación: **https://taskboard.rosariumpos.com** (dominio propio; también responde en https://taskboard-web-rr8f.onrender.com)
+- API: https://taskboard-api-ihvm.onrender.com · health check: `/api/health`
 
-## Alcance implementado (Must Have, fases 1 a 4)
+En el plan gratuito de Render la API se suspende tras un rato sin uso: la primera carga puede tardar cerca de un minuto.
 
-| Módulo | Requerimientos | Estado |
+## Estado por fases
+
+El levantamiento define 97 requerimientos (RF-001 a RF-097) priorizados con MoSCoW y repartidos en siete fases.
+
+| Fase | Alcance | Estado |
 |---|---|---|
-| 1. Inicio de sesión y usuarios | RF-001 a RF-009 | Completo |
-| 2. Roles y permisos | RF-010 a RF-015 | Completo, validado en el servidor |
-| 3. Departamentos | RF-016 a RF-020 | Completo |
-| 4. Proyectos | RF-021 a RF-029 | Completo |
-| 5. Tareas | RF-030 a RF-044 | Completo excepto RF-037 (adjuntos, Should Have) |
-| 6. Tablero Kanban | RF-045 a RF-054 | Completo |
-| 7. Estados y seguimiento | RF-055 a RF-060 | Completo |
-| Reglas de negocio | RN-001 a RN-012 | Completas |
-| Módulos 8 a 12 (calendario, comentarios, notificaciones, dashboard, configuración) | RF-061 a RF-097 | Fases siguientes |
+| 1 | Inicio de sesión, usuarios y roles (RF-001 a RF-015) | ✅ Completa, más alta de usuarios por invitación |
+| 2 | Departamentos y proyectos (RF-016 a RF-029) | ✅ Completa |
+| 3 | Creación, asignación y administración de tareas (RF-030 a RF-044) | ✅ Completa, excepto RF-037 (adjuntos) |
+| 4 | Tablero Kanban, estados y seguimiento (RF-045 a RF-060) | ✅ Completa |
+| 5 | Calendario, notificaciones, comentarios y adjuntos (RF-061 a RF-079) | 🟡 Parcial: calendario completo y aviso por correo de tarea asignada (RF-073); faltan comentarios (RF-067 a RF-072), adjuntos y el resto de avisos (RF-074 a RF-079) |
+| 6 | Dashboard e informes (RF-080 a RF-090) | ✅ Completa, con exportación a Excel y PDF |
+| 7 | Pruebas, seguridad, configuración y puesta en marcha (RF-091 a RF-097) | 🟡 Parcial: despliegue, dominio propio, correo y pruebas hechos; faltan parámetros de configuración y auditoría |
+
+Reglas de negocio RN-001 a RN-012: todas aplicadas en el servidor.
+
+**Pendiente para las siguientes iteraciones:** comentarios y menciones en tareas, archivos adjuntos, avisos por vencimiento, modificación y aprobación, notificaciones dentro de la aplicación, módulo de configuración (prioridades, estados, horarios) y bitácora de auditoría. Fuera del alcance: IA avanzada, integraciones complejas y app móvil nativa (la web es responsiva).
+
+### Qué incluye cada módulo terminado
+
+- **Calendario (RF-061 a RF-066):** vistas de mes, semana y día con las tareas por fecha de vencimiento, filtros por proyecto y responsable, y reprogramación arrastrando la tarea a otro día.
+- **Dashboard (RF-080 a RF-090):** indicadores generales (cumplimiento, vencidas), tareas por estado, avance por proyecto y resultados por departamento y por colaborador, con filtros de fecha, proyecto y departamento. Se exporta a Excel (`.xlsx`) o se imprime/guarda como PDF.
+- **Correos (RF-073, RF-006):** aviso de tarea asignada, recuperación de contraseña e invitaciones, enviados con Zoho Mail desde el dominio de la empresa.
 
 Notas:
 - **RF-006 (recuperar contraseña):** el enlace se genera con un token de un solo uso que vence en 1 hora y llega por correo (ver *Correos*).
@@ -63,16 +78,20 @@ taskboard/
 │   ├── init-db.js          → crea tablas y datos de ejemplo
 │   ├── middleware/auth.js  → sesión (JWT) y roles
 │   ├── lib/permissions.js  → matriz de permisos
-│   └── routes/             → auth, users, departments, projects, tasks
+│   ├── lib/migrate.js      → aplica schema.sql al arrancar
+│   ├── lib/mailer.js       → envío de correos con la API de Zoho Mail
+│   ├── lib/emails.js       → plantillas de los correos
+│   ├── lib/invitations.js  → enlaces de invitación y recuperación
+│   └── routes/             → auth, users, departments, projects, tasks, dashboard
 └── frontend/src/
-    ├── pages/              → Login, Board (Kanban), Projects, Departments, Users, Profile
+    ├── pages/              → Login, Board (Kanban), Calendar, Dashboard, Projects, Departments, Users, Profile
     ├── components/         → TaskDrawer, TaskForm, componentes de interfaz
     └── lib/                → api, auth, toast, formato
 ```
 
 ### Modelo de datos
 
-`roles`, `users`, `departments`, `password_resets`, `statuses`, `priorities`, `projects`, `project_members`, `tasks`, `task_assignees`, `subtasks`, `task_history`. Las relaciones muchos a muchos (participantes de proyecto y responsables de tarea) usan tablas intermedias.
+`roles`, `users`, `departments`, `password_resets` (invitaciones y recuperación), `statuses`, `priorities`, `projects`, `project_members`, `tasks`, `task_assignees`, `subtasks`, `task_history`. Las relaciones muchos a muchos (participantes de proyecto y responsables de tarea) usan tablas intermedias.
 
 ## API
 
@@ -89,13 +108,15 @@ taskboard/
 | GET / POST / PUT | `/api/departments` · `/:id` · `/:id/members` | Departamentos |
 | GET / POST / PUT | `/api/projects` · `/:id` | Proyectos |
 | PATCH | `/api/projects/:id/archive` | Archivar proyecto |
-| GET / POST / PUT | `/api/tasks` · `/:id` | Tareas (filtros: `project_id`, `assignee_id`, `priority_id`, `status_id`, `q`, `overdue`) |
+| GET / POST / PUT | `/api/tasks` · `/:id` | Tareas (filtros: `project_id`, `assignee_id`, `priority_id`, `status_id`, `q`, `overdue`, `from`, `to`) |
+| PATCH | `/api/tasks/:id/reschedule` | Reprogramar desde el calendario |
 | PATCH | `/api/tasks/:id/status` | Cambiar estado (Kanban) |
 | POST | `/api/tasks/:id/review` | Aprobar o rechazar |
 | POST | `/api/tasks/:id/duplicate` | Duplicar |
 | PATCH | `/api/tasks/:id/time` · `/:id/archive` | Tiempo real · archivar |
 | DELETE | `/api/tasks/:id` | Eliminar (solo admin) |
 | POST / PATCH / DELETE | `/api/tasks/:id/subtasks[/:subId]` | Subtareas |
+| GET | `/api/dashboard` · `/api/dashboard/export.xlsx` | Indicadores · exportación a Excel |
 | GET | `/api/meta` | Estados, prioridades y roles |
 
 ## Ejecución local
@@ -148,9 +169,13 @@ El servidor actualiza el esquema de la base de datos al arrancar (`schema.sql` e
 
 
 **Backend (Web Service):** Root Directory `backend`, Build `npm install`, Start `npm start`, Health Check `/api/health`.
-Variables: `DATABASE_URL` (Internal Database URL), `DB_SSL=false`, `FRONTEND_URL` (URL del Static Site, sin barra final), `JWT_SECRET` (texto largo y aleatorio), `NODE_ENV=production` y, para los correos, las variables `ZOHO_*` y `MAIL_FROM` (sección anterior).
+Variables: `DATABASE_URL` (Internal Database URL), `DB_SSL=false`, `FRONTEND_URL` (dominio propio y URL del Static Site, separados por coma, sin barra final), `JWT_SECRET` (texto largo y aleatorio), `NODE_ENV=production` y, para los correos, las variables `ZOHO_*` y `MAIL_FROM` (sección anterior).
 
 **Frontend (Static Site):** Root Directory `frontend`, Build `npm install && npm run build`, Publish `dist`.
 Variable: `VITE_API_URL` (URL del backend, sin barra final). Si cambia, hay que volver a desplegar.
 
-**Base de datos:** ejecutar `npm run db:init` una vez desde el equipo local con la External Database URL.
+**Base de datos:** para cargar los datos de demostración en una base nueva, ejecutar `npm run db:init` una sola vez desde el equipo local con la External Database URL. Los cambios de esquema posteriores se aplican solos al desplegar. La base gratuita de Render vence el 10 de diciembre de 2026; para uso real se necesita un plan pago.
+
+**Dominio propio:** en Render (Static Site → Settings → Custom Domains) se agregó `taskboard.rosariumpos.com`, y en Cloudflare un registro CNAME `taskboard` que apunta a la URL `.onrender.com` del Static Site. En el backend, `FRONTEND_URL` admite varios orígenes separados por coma; el primero se usa para los enlaces de los correos, así que debe ser el dominio propio.
+
+**Despliegue:** el auto-deploy está desactivado. Después de cada push a `main`, en Render usar **Manual Deploy → Deploy latest commit** en `taskboard-api` y en `taskboard-web`.
