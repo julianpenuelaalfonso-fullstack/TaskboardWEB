@@ -5,6 +5,8 @@ const pool = require("../db");
 const { signToken, requireAuth } = require("../middleware/auth");
 const { permissionsFor } = require("../lib/permissions");
 const { ah, HttpError, text } = require("../lib/http");
+const { sendInBackground } = require("../lib/mailer");
+const { passwordResetEmail } = require("../lib/emails");
 
 const router = express.Router();
 
@@ -74,7 +76,7 @@ router.put("/me/password", requireAuth, ah(async (req, res) => {
 }));
 
 // RF-006: solicitar recuperación de contraseña.
-// Sin servicio de correo, el enlace se escribe en los logs del servidor (simula el correo).
+// Envía el enlace por correo (Zoho Mail). Si el correo no está configurado, se escribe en los logs.
 router.post("/forgot", ah(async (req, res) => {
   const email = text(req.body.email).toLowerCase();
   const { rows } = await pool.query("SELECT id, active FROM users WHERE email = $1", [email]);
@@ -88,8 +90,10 @@ router.post("/forgot", ah(async (req, res) => {
       "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 hour')",
       [user.id, tokenHash]
     );
-    const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/?reset=${token}`;
-    console.log(`[Recuperación de contraseña] ${email}: ${link}`);
+    const base = (process.env.FRONTEND_URL || "http://localhost:5173").split(",")[0].trim().replace(/\/$/, "");
+    const link = `${base}/?reset=${token}`;
+    // En segundo plano: la respuesta tarda lo mismo exista o no la cuenta
+    sendInBackground({ to: email, subject: "Recupera tu contraseña de TaskBoard", html: passwordResetEmail(link) }, "recuperación");
     // Solo en desarrollo se devuelve el enlace para poder probar sin correo
     if (process.env.NODE_ENV !== "production") response.devResetLink = link;
   }

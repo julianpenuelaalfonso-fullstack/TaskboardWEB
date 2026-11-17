@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../db");
 const { ah, HttpError, isDate, text, idParam } = require("../lib/http");
 const P = require("../lib/permissions");
+const { notifyTaskAssigned } = require("../lib/emails");
 
 const router = express.Router();
 
@@ -187,6 +188,8 @@ router.post("/", ah(async (req, res) => {
     await logHistory(client, id, req.user.id, "asignada", `Responsables: ${await names(d.assigneeIds)}`);
     await client.query("COMMIT");
     res.status(201).json(withPermissions(req.user, await loadTask(id)));
+    // RF-073: correo a los responsables (después de responder, sin bloquear)
+    notifyTaskAssigned(id, d.assigneeIds, req.user).catch((err) => console.error("[Correo] Tarea nueva:", err.message));
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -229,6 +232,10 @@ router.put("/:id", ah(async (req, res) => {
     if (changes.length) await logHistory(client, task.id, req.user.id, "editada", changes.join(" · "));
     await client.query("COMMIT");
     res.json(withPermissions(req.user, await loadTask(task.id)));
+    // RF-073: solo los responsables que se agregan en esta edición reciben el aviso
+    const previous = new Set(task.assignees.map((a) => a.id));
+    const added = d.assigneeIds.filter((uid) => !previous.has(uid));
+    if (added.length) notifyTaskAssigned(task.id, added, req.user).catch((err) => console.error("[Correo] Asignación:", err.message));
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

@@ -125,10 +125,23 @@ Contraseña para todas: `Innova2026*`
 | Colaborador | colaborador@innova.com · valentina@innova.com |
 | Invitado | invitado@innova.com |
 
+## Correos (Zoho Mail)
+
+El sistema envía correos desde la cuenta de Zoho de la empresa usando la **API HTTPS de Zoho Mail**, porque el plan gratuito de Render bloquea el SMTP.
+
+- **Tarea asignada (RF-073):** al crear una tarea, cada responsable recibe un correo con el título, el proyecto, la descripción, la prioridad, las fechas, quién la asignó y un botón que abre la tarea (`#/tablero?tarea=ID`). Al editar una tarea, solo se avisa a los responsables nuevos. Quien crea la tarea no recibe aviso.
+- **Recuperación de contraseña (RF-006):** el enlace llega por correo.
+- Los envíos se hacen en segundo plano: si Zoho falla, la operación se completa igual y el error queda en los logs. Si las variables no están configuradas, el correo solo se escribe en los logs.
+
+**Configuración (una sola vez):**
+1. En `api-console.zoho.com` crea un **Self Client** y copia el Client ID y el Client Secret.
+2. En **Generate Code** usa el scope `ZohoMail.accounts.READ,ZohoMail.messages.CREATE` y ejecuta `node backend/scripts/zoho-get-refresh-token.js` (instrucciones dentro del archivo) para obtener el refresh token.
+3. En Render (Web Service → Environment) define `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_DC` (`com`, `eu`, `in`…) y `MAIL_FROM` (el correo de la cuenta que autorizó la app). Nunca subas estos valores a GitHub.
+
 ## Despliegue en Render
 
 **Backend (Web Service):** Root Directory `backend`, Build `npm install`, Start `npm start`, Health Check `/api/health`.
-Variables: `DATABASE_URL` (Internal Database URL), `DB_SSL=false`, `FRONTEND_URL` (URL del Static Site, sin barra final), `JWT_SECRET` (texto largo y aleatorio), `NODE_ENV=production`.
+Variables: `DATABASE_URL` (Internal Database URL), `DB_SSL=false`, `FRONTEND_URL` (URL del Static Site, sin barra final), `JWT_SECRET` (texto largo y aleatorio), `NODE_ENV=production` y, para los correos, las variables `ZOHO_*` y `MAIL_FROM` (sección anterior).
 
 **Frontend (Static Site):** Root Directory `frontend`, Build `npm install && npm run build`, Publish `dist`.
 Variable: `VITE_API_URL` (URL del backend, sin barra final). Si cambia, hay que volver a desplegar.

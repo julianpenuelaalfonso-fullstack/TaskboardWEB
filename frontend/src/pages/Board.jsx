@@ -34,6 +34,12 @@ export default function Board({ params }) {
     if (params.proyecto) setFilters((f) => ({ ...f, project_id: params.proyecto }));
   }, [params.proyecto]);
 
+  // Enlace directo a una tarea (por ejemplo, desde el correo de asignación): #/tablero?tarea=12
+  useEffect(() => {
+    const id = Number(params.tarea);
+    if (Number.isInteger(id) && id > 0) setOpenTask(id);
+  }, [params.tarea]);
+
   // Búsqueda con pequeña espera para no llamar a la API en cada tecla
   useEffect(() => {
     const t = setTimeout(() => setFilters((f) => ({ ...f, q: query.trim() })), 300);
@@ -210,7 +216,10 @@ export default function Board({ params }) {
       {openTask && (
         <TaskDrawer
           taskId={openTask}
-          onClose={() => setOpenTask(null)}
+          onClose={() => {
+            setOpenTask(null);
+            if (params.tarea) window.history.replaceState(null, "", "#/tablero");
+          }}
           onChanged={loadTasks}
           onEdit={(task) => { setOpenTask(null); setForm({ task }); }}
         />
