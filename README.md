@@ -8,7 +8,7 @@ El frontend y el backend están separados, se comunican por una API REST y se de
 
 **Documentación:** [`docs/TaskBoard_Documentacion_v1.1.pdf`](docs/TaskBoard_Documentacion_v1.1.pdf) reúne los entregables 1 a 9: visión y alcance, SRS, historias de usuario, UML, modelo entidad-relación, prototipos, matriz de permisos, plan de pruebas y manuales, actualizados con el calendario, el dashboard, los correos y las invitaciones. El levantamiento de requerimientos original está en `Levantamiento_Requerimientos.docx`.
 
-**Reflexión:** [`REFLEXION.md`](REFLEXION.md) · **Evidencias del despliegue:** [`docs/evidencias/`](docs/evidencias/)
+**Reflexión:** [`REFLEXION.md`](REFLEXION.md)
 
 ## Enlaces en producción
 
