@@ -8,6 +8,8 @@ El frontend y el backend están separados, se comunican por una API REST y se de
 
 **Documentación:** [`docs/TaskBoard_Documentacion_v1.1.pdf`](docs/TaskBoard_Documentacion_v1.1.pdf) reúne los entregables 1 a 9: visión y alcance, SRS, historias de usuario, UML, modelo entidad-relación, prototipos, matriz de permisos, plan de pruebas y manuales, actualizados con el calendario, el dashboard, los correos y las invitaciones. El levantamiento de requerimientos original está en `Levantamiento_Requerimientos.docx`.
 
+**Reflexión:** [`REFLEXION.md`](REFLEXION.md) · **Evidencias del despliegue:** [`docs/evidencias/`](docs/evidencias/)
+
 ## Enlaces en producción
 
 - Aplicación: **https://taskboard.rosariumpos.com** (dominio propio; también responde en https://taskboard-web-rr8f.onrender.com)
@@ -178,4 +180,4 @@ Variable: `VITE_API_URL` (URL del backend, sin barra final). Si cambia, hay que 
 
 **Dominio propio:** en Render (Static Site → Settings → Custom Domains) se agregó `taskboard.rosariumpos.com`, y en Cloudflare un registro CNAME `taskboard` que apunta a la URL `.onrender.com` del Static Site. En el backend, `FRONTEND_URL` admite varios orígenes separados por coma; el primero se usa para los enlaces de los correos, así que debe ser el dominio propio.
 
-**Despliegue:** el auto-deploy está desactivado. Después de cada push a `main`, en Render usar **Manual Deploy → Deploy latest commit** en `taskboard-api` y en `taskboard-web`.
+**Despliegue automático:** `taskboard-api` y `taskboard-web` tienen activado *Auto-Deploy* (Settings → Build & Deploy → On Commit). Cada push a `main` dispara un nuevo despliegue de los dos servicios, que se puede seguir en la pestaña *Events* de cada uno.
